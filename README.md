@@ -5,6 +5,7 @@
 [![license: MIT-0](https://img.shields.io/badge/license-MIT--0-blue.svg)](LICENSE)
 [![current REST: 114/141 callable](https://img.shields.io/badge/current%20REST-114%2F141%20callable-yellow.svg)](docs/coverage.json)
 [![JSON WebSocket: 30 topics](https://img.shields.io/badge/JSON%20WebSocket-30%20topics-blue.svg)](spec/official/ws-topics.json)
+[![Testnet probes: 4/4 passed](https://img.shields.io/badge/Testnet%20probes-4%2F4%20passed-brightgreen.svg)](#testing-and-maintenance)
 
 > [!WARNING]
 > **Pre-release:** four read-only Testnet probes passed on 2026-09-25, alongside deterministic
