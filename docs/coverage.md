@@ -1,5 +1,10 @@
 # BitMEX contract and coverage
 
+BitMEX [ceased exchange operations on 23 September 2026](https://www.bitmex.com/wind-down/).
+The inventory below is a historical contract snapshot; callable coverage describes the Rust
+surface and local fixtures, not the present ability to trade. Read-only Testnet responses observed
+after closure cannot establish Mainnet trading availability.
+
 The current [BitMEX REST endpoint pages](https://docs.bitmex.com/api-explorer) are the REST authority. An inventory of the English pages on 2026-09-25 found 141 distinct method/path operations. The [API Explorer Swagger](https://www.bitmex.com/api/explorer/swagger.json) has 120 operations and omits current v2 order routes; it is retained as a normalized cross-check in `spec/official/explorer-operations.json`. The [JSON WebSocket guide](https://www.bitmex.com/app/wsAPI) supplies the 30-topic inventory in `spec/official/ws-topics.json`.
 
 `spec/official/rest.json` contains the pinned wire facts extracted from the current pages: methods, paths, parameter and JSON schema structure, response statuses, source URLs, and source hashes. It omits page prose and examples. `tools/fetch_contract.py` is an explicit online refresh; `tools/generate.py --check` and `tools/check_coverage.py` are offline CI gates. Generated source is checked in and not hand-edited.

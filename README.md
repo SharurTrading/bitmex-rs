@@ -8,12 +8,11 @@
 [![Testnet probes: 4/4 passed](https://img.shields.io/badge/Testnet%20probes-4%2F4%20passed-brightgreen.svg)](#testing-and-maintenance)
 
 > [!WARNING]
-> **Pre-release: live testing is not yet complete.** Four read-only Testnet probes passed on
-> 2026-09-25, alongside deterministic local fixtures. No Mainnet account or live order has been
-> tested. BitMEX does not guarantee that Testnet reproduces Mainnet behavior; the observed
-> [environment comparison](docs/coverage.md) separates shared schema drift from Testnet-only
-> evidence. Validate the client and your reconciliation flow independently before using it for
-> live trading.
+> **BitMEX exchange trading closed on 23 September 2026 at 04:00 UTC.** This crate is a
+> historical API implementation, not a usable live trading integration. BitMEX says login and
+> withdrawals remain available during wind-down; their API availability is not established by
+> this crate. The read-only Testnet probes and [environment comparison](docs/coverage.md) do not
+> establish Mainnet trading behavior. See the [official closure notice](https://www.bitmex.com/wind-down/).
 
 An async, provider-native Rust client for the [BitMEX REST API](https://docs.bitmex.com/api-explorer)
 and [JSON WebSocket API](https://www.bitmex.com/app/wsAPI). The Cargo package is `bitmex-client`,
@@ -32,7 +31,7 @@ version is **1.95.0**.
 | Callable typed REST methods | 114, each with local success and rejection fixtures |
 | Documentation blockers | 27 pages with no published response fields |
 | JSON WebSocket topics | All 30 acknowledged read-only Testnet subscriptions |
-| Order version | v2 preferred; v1 available for documented compatibility |
+| Order version | Historical v2 and v1 contracts; exchange trading closed |
 | Testnet validation | Public instruments, authenticated API-key self and order query, and private order-feed subscription passed read-only |
 
 The current BitMEX endpoint pages, reviewed on 2026-09-25, are the REST authority. The older
@@ -92,7 +91,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`order::NewOrder` provides validated v2 limit, market, stop, and stop-limit constructors. `Client::place_order_v2` submits through `/api/v2/order`. The remaining documented v1 and v2 methods are available under their explicit generated names.
+`order::NewOrder` contains historical v2 limit, market, stop, and stop-limit constructors.
+`Client::place_order_v2` targets the documented `/api/v2/order` route, but exchange trading has
+closed. The remaining documented v1 and v2 methods are available under their explicit generated
+names; availability during wind-down is unverified.
 
 For market data, create a validated topic with
 `realtime::Topic::new(realtime::Feed::OrderBookL2_25, Some(symbol), Some(realtime::Pool::Primary))`.
