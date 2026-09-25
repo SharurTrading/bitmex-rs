@@ -53,8 +53,14 @@ tokio = { version = "1", features = ["macros", "rt"] }
 ```rust
 use bitmex_client::{Client, Environment, generated::models::GetInstrumentsQuery};
 
-async fn first_instrument() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::builder(Environment::Testnet).build()?;
+    first_instrument(&client).await?;
+    Ok(())
+}
+
+async fn first_instrument(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let query = GetInstrumentsQuery { count: Some(1), ..Default::default() };
     let response = client.get_instruments(&query).await?;
     println!("received {} instruments", response.body.len());
@@ -62,14 +68,22 @@ async fn first_instrument() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Authenticated calls use caller-provided credentials:
+Build the client once and pass `&Client` to functions that make API calls. Authenticated calls use
+caller-provided credentials in the same pattern:
 
 ```rust
 use bitmex_client::{ApiCredentials, Client, Environment};
 
-fn client(key: String, secret: String) -> Result<Client, bitmex_client::Error> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let key = std::env::var("BITMEX_TESTNET_API_KEY")?;
+    let secret = std::env::var("BITMEX_TESTNET_API_SECRET")?;
     let credentials = ApiCredentials::new(key, secret)?;
-    Client::builder(Environment::Testnet).credentials(credentials).build()
+    let client = Client::builder(Environment::Testnet)
+        .credentials(credentials)
+        .build()?;
+    client.api_key_self().await?;
+    Ok(())
 }
 ```
 
