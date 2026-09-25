@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import keyword
@@ -77,6 +78,9 @@ class Generator:
         if kind == "object" or "properties" in schema:
             properties = schema.get("properties")
             if not properties:
+                if schema.get("additionalProperties"):
+                    item = self.rust_type(schema["additionalProperties"], name + "Item")
+                    return f"std::collections::BTreeMap<String, {item}>"
                 return "crate::UnknownObject"
             normalized = {key: value for key, value in schema.items() if key not in ("description", "title", "example")}
             fingerprint = json.dumps(normalized, sort_keys=True)
@@ -137,12 +141,36 @@ def schema_for(response: dict) -> dict | None:
     return content.get("application/json", {}).get("schema")
 
 
+def reviewed_response_schema(op: dict, schema: dict | None) -> dict | None:
+    """Retain the page pin while accepting wire shapes observed on Testnet."""
+    if schema is None:
+        return None
+    path = op["path"]
+    if path == "/api/v1/chat/pinned":
+        changed = copy.deepcopy(schema)
+        changed["required"] = []  # Empty object when the channel has no pin.
+        return changed
+    if path == "/api/v1/instrument/activeIntervals":
+        return schema["items"]  # Testnet sends the one interval object directly.
+    if path in {"/api/v1/user/commission", "/api/v1/wallet/currencies"}:
+        return {"type": "object", "additionalProperties": schema["items"]}
+    if path == "/api/v1/user/csa":
+        return {"type": "object", "properties": {"csas": schema}, "required": ["csas"]}
+    if path == "/api/v1/user/tradingVolume":
+        return {"type": "array", "items": schema}
+    if path == "/api/v1/userEvent":
+        return {"type": "object", "properties": {"userEvents": schema}, "required": ["userEvents"]}
+    return schema
+
+
 def minimal_value(schema: dict | None):
     schema = schema or {}
     kind = schema.get("type")
     if kind == "array":
-        return []
+        return [minimal_value(schema.get("items"))]
     if kind == "object" or "properties" in schema:
+        if schema.get("additionalProperties"):
+            return {"fixture": minimal_value(schema["additionalProperties"])}
         required = schema.get("required", [])
         return {key: minimal_value(schema.get("properties", {}).get(key)) for key in required}
     if kind == "string":
@@ -177,8 +205,8 @@ def emit() -> tuple[str, str, list[dict]]:
             name += "_" + hashlib.sha256(op["path"].encode()).hexdigest()[:6]
         seen_names.add(name)
         stem = pascal(name)
-        response_schema = schema_for(op["responses"]["200"])
-        blocked = response_schema is None or (response_schema.get("type") == "object" and not response_schema.get("properties"))
+        response_schema = reviewed_response_schema(op, schema_for(op["responses"]["200"]))
+        blocked = response_schema is None or (response_schema.get("type") == "object" and not response_schema.get("properties") and not response_schema.get("additionalProperties"))
         result_type = gen.rust_type(response_schema, stem + "Response") if not blocked else None
         args = []
         query_fields = []
@@ -204,9 +232,16 @@ def emit() -> tuple[str, str, list[dict]]:
             gen.defs.append("/// Query for the corresponding BitMEX REST operation.\n#[derive(Debug, Clone, Default, serde::Serialize)]\npub struct " + query_name + " {\n" + "\n".join(query_fields) + "\n}\n")
             args.append(("query", f"&{query_name}"))
         body_name = None
+        body_encoding = "json"
         body = op["request_body"]
         if body:
-            body_schema = body.get("content", {}).get("application/json", {}).get("schema")
+            content = body.get("content", {})
+            body_schema = content.get("application/json", {}).get("schema")
+            if body_schema is None:
+                form_schema = content.get("application/x-www-form-urlencoded", {}).get("schema")
+                if form_schema and form_schema.get("properties"):
+                    body_schema = form_schema
+                    body_encoding = "form"
             if body_schema:
                 body_name = gen.rust_type(body_schema, stem + "Body")
                 args.append(("body", f"&{body_name}"))
@@ -233,7 +268,8 @@ def emit() -> tuple[str, str, list[dict]]:
         q = "Some(query)" if query_name else "None::<&()>"
         b = "Some(body)" if body_name else "None::<&()>"
         arg_list = ", ".join(f"{n}: {t}" for n, t in args)
-        method = f'''    /// {op["title"].rstrip('.')}.\n    /// Source: <{op["source"]}>\n    pub async fn {name}(&self{", " if arg_list else ""}{arg_list}) -> Result<crate::ApiResponse<{result_type}>, crate::OperationError<crate::ProviderRejection>> {{\n        let path = {path_expr};\n        self.execute(reqwest::Method::{op["method"]}, &path, {q}, {b}, {str(is_mutation).lower()}).await\n    }}\n'''
+        executor = "execute_form" if body_encoding == "form" else "execute"
+        method = f'''    /// {op["title"].rstrip('.')}.\n    /// Source: <{op["source"]}>\n    pub async fn {name}(&self{", " if arg_list else ""}{arg_list}) -> Result<crate::ApiResponse<{result_type}>, crate::OperationError<crate::ProviderRejection>> {{\n        let path = {path_expr};\n        self.{executor}(reqwest::Method::{op["method"]}, &path, {q}, {b}, {str(is_mutation).lower()}).await\n    }}\n'''
         methods.append(method)
     models = "// @generated by tools/generate.py from spec/official/rest.json. Do not edit.\n#![allow(missing_docs, clippy::pedantic)]\n" + "\n".join(gen.defs)
     api = "// @generated by tools/generate.py from spec/official/rest.json. Do not edit.\n#![allow(missing_docs, clippy::pedantic)]\nuse crate::generated::models::*;\nimpl crate::Client {\n" + "\n".join(methods) + "}\n"
@@ -244,8 +280,8 @@ def emit_tests() -> str:
     tests = ["//! Generated, deterministic REST loopback fixtures.\n// @generated by tools/generate.py. Do not edit.\n#![allow(clippy::expect_used)]\nmod support;\nuse bitmex_client::{ApiCredentials, Client, Environment, PathId};\nuse bitmex_client::generated::models::*;\n"]
     for op in SPEC["operations"]:
         name = operation_name(op)
-        response_schema = schema_for(op["responses"]["200"])
-        if response_schema is None or (response_schema.get("type") == "object" and not response_schema.get("properties")):
+        response_schema = reviewed_response_schema(op, schema_for(op["responses"]["200"]))
+        if response_schema is None or (response_schema.get("type") == "object" and not response_schema.get("properties") and not response_schema.get("additionalProperties")):
             continue
         stem = pascal(name)
         args = []
@@ -261,8 +297,16 @@ def emit_tests() -> str:
             setup.append(f"    let query = {stem}Query::default();")
             args.append("&query")
         body = op["request_body"]
+        body_schema = None
+        is_form = False
         if body:
-            body_schema = body.get("content", {}).get("application/json", {}).get("schema")
+            content = body.get("content", {})
+            body_schema = content.get("application/json", {}).get("schema")
+            if body_schema is None:
+                form_schema = content.get("application/x-www-form-urlencoded", {}).get("schema")
+                if form_schema and form_schema.get("properties"):
+                    body_schema = form_schema
+                    is_form = True
             if body_schema:
                 body_value = minimal_value(body_schema)
                 if op["path"] in ("/api/v1/order", "/api/v2/order"):
@@ -283,7 +327,14 @@ def emit_tests() -> str:
         response_json = json.dumps(minimal_value(response_schema), separators=(",", ":"))
         test_name = name
         call = f"client.{name}({', '.join(args)}).await"
-        tests.append(f'''#[tokio::test]\nasync fn {test_name}_success_and_rejection() {{\n{chr(10).join(setup)}\n    let (url, received) = support::serve(200, r#"{response_json}"#).await;\n    let client = Client::builder(Environment::Testnet)\n        .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))\n        .loopback_rest_url(url).build().expect("client");\n    let result = {call};\n    assert!(result.is_ok(), "success fixture for {op['method']} {path}: {{result:?}}");\n    let request = received.await.expect("request recorded");\n    assert!(request.starts_with("{op['method']} {path}"), "{{request}}");\n    assert!(request.contains("api-signature:"), "{{request}}");\n\n    let (url, received) = support::serve(400, r#"{{"error":{{"name":"ValidationError","message":"fixture"}}}}"#).await;\n    let client = Client::builder(Environment::Testnet)\n        .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))\n        .loopback_rest_url(url).build().expect("client");\n    let result = {call};\n    assert!(matches!(result, Err(bitmex_client::OperationError::Rejected {{ status: 400, .. }})), "rejection fixture: {{result:?}}");\n    let request = received.await.expect("request recorded");\n    assert!(request.starts_with("{op['method']} {path}"), "{{request}}");\n}}\n''')
+        body_assertion = ""
+        if body_schema:
+            content_type = "application/x-www-form-urlencoded" if is_form else "application/json"
+            body_assertion = f'    assert!(request.contains("content-type: {content_type}"), "missing request content type");'
+            for wire in body_schema.get("required", []):
+                needle = f"{wire}=" if is_form else json.dumps(wire)
+                body_assertion += f'\n    assert!(request.split_once("\\r\\n\\r\\n").is_some_and(|(_, body)| body.contains({json.dumps(needle)})), "missing required request field {wire}");'
+        tests.append(f'''#[tokio::test]\nasync fn {test_name}_success_and_rejection() {{\n{chr(10).join(setup)}\n    let (url, received) = support::serve(200, r#"{response_json}"#).await;\n    let client = Client::builder(Environment::Testnet)\n        .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))\n        .loopback_rest_url(url).build().expect("client");\n    let result = {call};\n    assert!(result.is_ok(), "success fixture for {op['method']} {path}: {{result:?}}");\n    let request = received.await.expect("request recorded");\n    assert!(request.starts_with("{op['method']} {path}"), "{{request}}");\n    assert!(request.contains("api-signature:"), "{{request}}");\n{body_assertion}\n    let (url, received) = support::serve(400, r#"{{"error":{{"name":"ValidationError","message":"fixture"}}}}"#).await;\n    let client = Client::builder(Environment::Testnet)\n        .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))\n        .loopback_rest_url(url).build().expect("client");\n    let result = {call};\n    assert!(matches!(result, Err(bitmex_client::OperationError::Rejected {{ status: 400, .. }})), "rejection fixture: {{result:?}}");\n    let request = received.await.expect("request recorded");\n    assert!(request.starts_with("{op['method']} {path}"), "{{request}}");\n}}\n''')
     return "\n".join(tests)
 
 

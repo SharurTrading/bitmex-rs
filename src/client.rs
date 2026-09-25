@@ -13,7 +13,8 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-const DEFAULT_MAX_BODY: usize = 8 * 1024 * 1024;
+const DEFAULT_MAX_BODY: usize = 64 * 1024 * 1024;
+const DEFAULT_MAX_WEBSOCKET_FRAME: usize = 64 * 1024 * 1024;
 
 /// BitMEX production or Testnet environment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,9 +37,9 @@ impl Environment {
     pub fn websocket(self, platform: bool) -> &'static str {
         match (self, platform) {
             (Self::Mainnet, false) => "wss://ws.bitmex.com/realtime",
-            (Self::Mainnet, true) => "wss://ws.bitmex.com/realtimePlatform",
+            (Self::Mainnet, true) => "wss://www.bitmex.com/realtimePlatform",
             (Self::Testnet, false) => "wss://ws.testnet.bitmex.com/realtime",
-            (Self::Testnet, true) => "wss://ws.testnet.bitmex.com/realtimePlatform",
+            (Self::Testnet, true) => "wss://testnet.bitmex.com/realtimePlatform",
         }
     }
 }
@@ -89,6 +90,7 @@ struct Inner {
     http: reqwest::Client,
     credentials: Option<ApiCredentials>,
     max_body: usize,
+    max_websocket_frame: usize,
     rate: Mutex<Rate>,
     fenced: Mutex<HashSet<String>>,
     in_flight: Mutex<HashSet<String>>,
@@ -100,12 +102,19 @@ struct Rate {
     cooldown_until: Option<Instant>,
 }
 
+#[derive(Clone, Copy)]
+enum BodyEncoding {
+    Json,
+    Form,
+}
+
 /// Client configuration with caller-injected credentials.
 pub struct ClientBuilder {
     environment: Environment,
     credentials: Option<ApiCredentials>,
     base_override: Option<Url>,
     max_body: usize,
+    max_websocket_frame: usize,
     timeout: Duration,
 }
 
@@ -133,6 +142,7 @@ impl Client {
             credentials: None,
             base_override: None,
             max_body: DEFAULT_MAX_BODY,
+            max_websocket_frame: DEFAULT_MAX_WEBSOCKET_FRAME,
             timeout: Duration::from_secs(30),
         }
     }
@@ -151,10 +161,11 @@ impl Client {
         self.inner.environment.websocket(platform)
     }
 
-    pub(crate) fn realtime_headers(
-        &self,
-        path: &str,
-    ) -> Result<Option<(String, String, String)>, Error> {
+    pub(crate) fn realtime_frame_limit(&self) -> usize {
+        self.inner.max_websocket_frame
+    }
+
+    pub(crate) fn realtime_headers(&self) -> Result<Option<(String, String, String)>, Error> {
         let Some(credentials) = self.inner.credentials.as_ref() else {
             return Ok(None);
         };
@@ -164,7 +175,8 @@ impl Client {
             .as_secs()
             .checked_add(10)
             .ok_or(Error::Clock)?;
-        let signature = sign(&credentials.secret, "GET", path, expires, b"")?;
+        // The JSON WebSocket guide requires this canonical path for both services.
+        let signature = sign(&credentials.secret, "GET", "/realtime", expires, b"")?;
         Ok(Some((
             credentials.key.clone(),
             expires.to_string(),
@@ -188,6 +200,32 @@ impl Client {
         query: Option<&Q>,
         body: Option<&B>,
         mutation: bool,
+    ) -> Result<ApiResponse<T>, OperationError<ProviderRejection>> {
+        self.execute_encoded(method, path, query, body, mutation, BodyEncoding::Json)
+            .await
+    }
+
+    /// Send a reviewed form-encoded operation, signing exactly the encoded bytes.
+    pub(crate) async fn execute_form<T: DeserializeOwned, Q: Serialize, B: Serialize>(
+        &self,
+        method: Method,
+        path: &str,
+        query: Option<&Q>,
+        body: Option<&B>,
+        mutation: bool,
+    ) -> Result<ApiResponse<T>, OperationError<ProviderRejection>> {
+        self.execute_encoded(method, path, query, body, mutation, BodyEncoding::Form)
+            .await
+    }
+
+    async fn execute_encoded<T: DeserializeOwned, Q: Serialize, B: Serialize>(
+        &self,
+        method: Method,
+        path: &str,
+        query: Option<&Q>,
+        body: Option<&B>,
+        mutation: bool,
+        encoding: BodyEncoding,
     ) -> Result<ApiResponse<T>, OperationError<ProviderRejection>> {
         let query_value = query
             .map(serde_json::to_value)
@@ -215,19 +253,27 @@ impl Client {
         if let Some(value) = query_value.as_ref() {
             append_query(&mut url, value)?;
         }
-        let body_bytes = body
-            .map(serde_json::to_vec)
-            .transpose()
-            .map_err(|e| Error::InvalidInput(e.to_string()))?
-            .unwrap_or_default();
+        let body_bytes = match (body, encoding) {
+            (Some(body), BodyEncoding::Json) => {
+                serde_json::to_vec(body).map_err(|e| Error::InvalidInput(e.to_string()))?
+            }
+            (Some(_), BodyEncoding::Form) => encode_form(body_value.as_ref())?,
+            (None, _) => Vec::new(),
+        };
         let mut request = self
             .inner
             .http
             .request(method.clone(), url.clone())
             .header("accept", "application/json");
-        if !body_bytes.is_empty() {
+        if body.is_some() {
             request = request
-                .header("content-type", "application/json")
+                .header(
+                    "content-type",
+                    match encoding {
+                        BodyEncoding::Json => "application/json",
+                        BodyEncoding::Form => "application/x-www-form-urlencoded",
+                    },
+                )
                 .body(body_bytes.clone());
         }
         if let Some(credentials) = self.inner.credentials.as_ref() {
@@ -427,9 +473,15 @@ impl ClientBuilder {
         self
     }
 
-    /// Set the maximum accepted REST body size.
+    /// Set the maximum accepted REST body size; the default is 64 MiB.
     pub fn max_body_bytes(mut self, bytes: usize) -> Self {
         self.max_body = bytes;
+        self
+    }
+
+    /// Set the maximum WebSocket frame and message size; the default is 64 MiB.
+    pub fn max_websocket_frame_bytes(mut self, bytes: usize) -> Self {
+        self.max_websocket_frame = bytes;
         self
     }
 
@@ -454,6 +506,7 @@ impl ClientBuilder {
             );
         if !valid_remote && !valid_loopback
             || self.max_body == 0
+            || self.max_websocket_frame == 0
             || base.username() != ""
             || base.password().is_some()
         {
@@ -472,6 +525,7 @@ impl ClientBuilder {
                 http,
                 credentials: self.credentials,
                 max_body: self.max_body,
+                max_websocket_frame: self.max_websocket_frame,
                 rate: Mutex::new(Rate {
                     minute: VecDeque::new(),
                     second: VecDeque::new(),
@@ -502,6 +556,19 @@ fn append_query(url: &mut Url, query: &serde_json::Value) -> Result<(), Error> {
         }
     }
     Ok(())
+}
+
+fn encode_form(value: Option<&serde_json::Value>) -> Result<Vec<u8>, Error> {
+    let object = value
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| Error::InvalidInput("form body must be an object".into()))?;
+    let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+    for (name, value) in object {
+        if !value.is_null() {
+            serializer.append_pair(name, &query_text(value));
+        }
+    }
+    Ok(serializer.finish().into_bytes())
 }
 
 fn query_text(value: &serde_json::Value) -> String {
@@ -723,6 +790,53 @@ mod tests {
             signature.ok().as_deref(),
             Some("c7682d435d0cfe87c16098df34ef2eb5a549d4c5a3c2b1f0f77b8af73423bf00")
         );
+    }
+
+    #[test]
+    fn generous_defaults_can_be_tightened_and_zero_bounds_are_rejected() {
+        let client = Client::builder(Environment::Testnet)
+            .build()
+            .expect("default client");
+        assert_eq!(client.inner.max_body, 64 * 1024 * 1024);
+        assert_eq!(client.realtime_frame_limit(), 64 * 1024 * 1024);
+        assert!(
+            Client::builder(Environment::Testnet)
+                .max_body_bytes(0)
+                .build()
+                .is_err()
+        );
+        assert!(
+            Client::builder(Environment::Testnet)
+                .max_websocket_frame_bytes(0)
+                .build()
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn platform_socket_uses_site_host_and_canonical_realtime_signature() {
+        assert_eq!(
+            Environment::Testnet.websocket(true),
+            "wss://testnet.bitmex.com/realtimePlatform"
+        );
+        assert_eq!(
+            Environment::Mainnet.websocket(true),
+            "wss://www.bitmex.com/realtimePlatform"
+        );
+        let client = Client::builder(Environment::Testnet)
+            .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
+            .build()
+            .expect("client");
+        let (_, expires, signature) = client.realtime_headers().expect("headers").expect("signed");
+        let expected = sign(
+            "fixture-secret",
+            "GET",
+            "/realtime",
+            expires.parse().expect("expiry"),
+            b"",
+        )
+        .expect("signature");
+        assert_eq!(signature, expected);
     }
 
     #[tokio::test]

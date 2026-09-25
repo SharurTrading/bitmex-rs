@@ -19,12 +19,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/address-new>
     pub async fn address_new(
         &self,
+        body: &AddressNewBody,
     ) -> Result<
         crate::ApiResponse<AddressNewResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/address".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -32,9 +33,10 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/address-update>
     pub async fn address_update(
         &self,
+        body: &AddressUpdateBody,
     ) -> Result<crate::ApiResponse<bool>, crate::OperationError<crate::ProviderRejection>> {
         let path = "/api/v1/address".to_owned();
-        self.execute(reqwest::Method::PUT, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::PUT, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -272,10 +274,11 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/chat-new>
     pub async fn chat_new(
         &self,
+        body: &ChatNewBody,
     ) -> Result<crate::ApiResponse<ChatNewResponse>, crate::OperationError<crate::ProviderRejection>>
     {
         let path = "/api/v1/chat".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -378,10 +381,11 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/guild-new>
     pub async fn guild_new(
         &self,
+        body: &GuildNewBody,
     ) -> Result<crate::ApiResponse<GuildNewResponse>, crate::OperationError<crate::ProviderRejection>>
     {
         let path = "/api/v1/guild".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -389,12 +393,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/guild-edit>
     pub async fn guild_edit(
         &self,
+        body: &GuildEditBody,
     ) -> Result<
         crate::ApiResponse<GuildEditResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/guild".to_owned();
-        self.execute(reqwest::Method::PUT, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::PUT, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -443,7 +448,7 @@ impl crate::Client {
     pub async fn get_active_intervals(
         &self,
     ) -> Result<
-        crate::ApiResponse<Vec<GetActiveIntervalsResponseItem>>,
+        crate::ApiResponse<GetActiveIntervalsResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/instrument/activeIntervals".to_owned();
@@ -970,12 +975,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/user-cancel-withdrawal>
     pub async fn user_cancel_withdrawal(
         &self,
+        body: &UserCancelWithdrawalBody,
     ) -> Result<
         crate::ApiResponse<UserCancelWithdrawalResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/cancelWithdrawal".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -984,7 +990,7 @@ impl crate::Client {
     pub async fn get_user_commission(
         &self,
     ) -> Result<
-        crate::ApiResponse<Vec<GetUserCommissionResponseItem>>,
+        crate::ApiResponse<std::collections::BTreeMap<String, GetUserCommissionResponseItem>>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/commission".to_owned();
@@ -996,9 +1002,10 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/user-communication-token>
     pub async fn user_communication_token(
         &self,
+        body: &UserCommunicationTokenBody,
     ) -> Result<crate::ApiResponse<bool>, crate::OperationError<crate::ProviderRejection>> {
         let path = "/api/v1/user/communicationToken".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -1006,12 +1013,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/user-confirm>
     pub async fn user_confirm(
         &self,
+        body: &UserConfirmBody,
     ) -> Result<
         crate::ApiResponse<UserConfirmResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/confirmEmail".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -1019,12 +1027,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/user-confirm-withdrawal>
     pub async fn user_confirm_withdrawal(
         &self,
+        body: &UserConfirmWithdrawalBody,
     ) -> Result<
         crate::ApiResponse<UserConfirmWithdrawalResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/confirmWithdrawal".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -1033,7 +1042,7 @@ impl crate::Client {
     pub async fn get_user_csa(
         &self,
     ) -> Result<
-        crate::ApiResponse<Vec<GetUserCsaResponseItem>>,
+        crate::ApiResponse<GetUserCsaResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/csa".to_owned();
@@ -1166,12 +1175,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/user-save-preferences>
     pub async fn user_save_preferences(
         &self,
+        body: &UserSavePreferencesBody,
     ) -> Result<
         crate::ApiResponse<UserSavePreferencesResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/preferences".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -1207,12 +1217,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/user-request-withdrawal>
     pub async fn user_request_withdrawal(
         &self,
+        body: &UserRequestWithdrawalBody,
     ) -> Result<
         crate::ApiResponse<UserRequestWithdrawalResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/requestWithdrawal".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -1263,7 +1274,7 @@ impl crate::Client {
     pub async fn get_trading_volume(
         &self,
     ) -> Result<
-        crate::ApiResponse<GetTradingVolumeResponse>,
+        crate::ApiResponse<Vec<GetTradingVolumeResponseItem>>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/user/tradingVolume".to_owned();
@@ -1361,7 +1372,7 @@ impl crate::Client {
         &self,
         query: &UserEventGetQuery,
     ) -> Result<
-        crate::ApiResponse<Vec<UserEventGetResponseItem>>,
+        crate::ApiResponse<UserEventGetResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/userEvent".to_owned();
@@ -1387,12 +1398,13 @@ impl crate::Client {
     /// Source: <https://docs.bitmex.com/api-explorer/user-price-alert-create-alert>
     pub async fn user_price_alert_create_alert(
         &self,
+        body: &UserPriceAlertCreateAlertBody,
     ) -> Result<
         crate::ApiResponse<UserPriceAlertCreateAlertResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/userPriceAlert".to_owned();
-        self.execute(reqwest::Method::POST, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::POST, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -1401,12 +1413,13 @@ impl crate::Client {
     pub async fn user_price_alert_update_alert(
         &self,
         id: &crate::PathId,
+        body: &UserPriceAlertUpdateAlertBody,
     ) -> Result<
         crate::ApiResponse<UserPriceAlertUpdateAlertResponse>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = format!("/api/v1/userPriceAlert/{id}", id = id.encoded());
-        self.execute(reqwest::Method::PUT, &path, None::<&()>, None::<&()>, true)
+        self.execute_form(reqwest::Method::PUT, &path, None::<&()>, Some(body), true)
             .await
     }
 
@@ -1442,7 +1455,7 @@ impl crate::Client {
     pub async fn get_wallet_currencies(
         &self,
     ) -> Result<
-        crate::ApiResponse<Vec<GetWalletCurrenciesResponseItem>>,
+        crate::ApiResponse<std::collections::BTreeMap<String, GetWalletCurrenciesResponseItem>>,
         crate::OperationError<crate::ProviderRejection>,
     > {
         let path = "/api/v1/wallet/currencies".to_owned();

@@ -5,10 +5,9 @@ use serde_json::Value;
 use std::{collections::HashSet, time::Duration};
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async_with_config,
-    tungstenite::{Message, protocol::WebSocketConfig},
+    tungstenite::{Error as WebSocketError, Message, protocol::WebSocketConfig},
 };
 
-const MAX_FRAME: usize = 1024 * 1024;
 type Socket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
 /// One owned WebSocket generation. No automatic reconnect occurs.
@@ -18,6 +17,7 @@ pub struct Connection {
     service: Service,
     ready_tables: HashSet<Feed>,
     pending_deadman: Option<MutationGuard>,
+    max_frame: usize,
     closed: bool,
 }
 
@@ -30,12 +30,8 @@ impl Client {
             .realtime_endpoint(platform)
             .into_client_request()
             .map_err(|_| Error::InvalidEndpoint)?;
-        let path = if platform {
-            "/realtimePlatform"
-        } else {
-            "/realtime"
-        };
-        if let Some((key, expires, signature)) = self.realtime_headers(path)? {
+        // BitMEX signs both JSON sockets as GET /realtime, including platform.
+        if let Some((key, expires, signature)) = self.realtime_headers()? {
             let headers = request.headers_mut();
             headers.insert(
                 "api-key",
@@ -48,18 +44,26 @@ impl Client {
                 signature.parse().map_err(|_| Error::Clock)?,
             );
         }
+        let max_frame = self.realtime_frame_limit();
         let config = WebSocketConfig::default()
-            .max_message_size(Some(MAX_FRAME))
-            .max_frame_size(Some(MAX_FRAME));
+            .max_message_size(Some(max_frame))
+            .max_frame_size(Some(max_frame));
         let (socket, _) = connect_async_with_config(request, Some(config), false)
             .await
-            .map_err(|_| Error::Transport("WebSocket connection failed".into()))?;
+            .map_err(|error| match error {
+                tokio_tungstenite::tungstenite::Error::Http(response) => Error::Transport(format!(
+                    "WebSocket upgrade rejected with HTTP {}",
+                    response.status().as_u16()
+                )),
+                _ => Error::Transport("WebSocket connection failed".into()),
+            })?;
         Ok(Connection {
             socket,
             client: self.clone(),
             service,
             ready_tables: HashSet::new(),
             pending_deadman: None,
+            max_frame,
             closed: false,
         })
     }
@@ -124,6 +128,9 @@ impl Connection {
         }
         let message = match tokio::time::timeout(Duration::from_secs(5), self.socket.next()).await {
             Ok(Some(Ok(message))) => message,
+            Ok(Some(Err(WebSocketError::Capacity(_)))) => {
+                return Ok(self.gap(GapReason::Oversized));
+            }
             Ok(Some(Err(_))) | Ok(None) => return Ok(self.gap(GapReason::ConnectionLost)),
             Err(_) => {
                 if self
@@ -136,6 +143,9 @@ impl Connection {
                 }
                 match tokio::time::timeout(Duration::from_secs(5), self.socket.next()).await {
                     Ok(Some(Ok(message))) => message,
+                    Ok(Some(Err(WebSocketError::Capacity(_)))) => {
+                        return Ok(self.gap(GapReason::Oversized));
+                    }
                     _ => return Ok(self.gap(GapReason::ConnectionLost)),
                 }
             }
@@ -145,7 +155,7 @@ impl Connection {
             Message::Close(_) => Ok(self.gap(GapReason::ConnectionLost)),
             Message::Text(text) => Ok(self.decode(&text)),
             Message::Binary(bytes) => {
-                if bytes.len() > MAX_FRAME {
+                if bytes.len() > self.max_frame {
                     return Ok(self.gap(GapReason::Oversized));
                 }
                 let text = match std::str::from_utf8(&bytes) {
@@ -174,16 +184,7 @@ impl Connection {
                 "topic belongs to another service".into(),
             ));
         }
-        if topic.feed().requires_auth()
-            && self
-                .client
-                .realtime_headers(if self.service == Service::Primary {
-                    "/realtime"
-                } else {
-                    "/realtimePlatform"
-                })?
-                .is_none()
-        {
+        if topic.feed().requires_auth() && self.client.realtime_headers()?.is_none() {
             return Err(Error::MissingCredentials);
         }
         Ok(())
@@ -191,7 +192,7 @@ impl Connection {
 
     async fn send_command(&mut self, op: &str, args: Value) -> Result<(), Error> {
         let message = serde_json::json!({"op": op, "args": args}).to_string();
-        if message.len() > MAX_FRAME {
+        if message.len() > self.max_frame {
             return Err(Error::InvalidInput("WebSocket command too large".into()));
         }
         self.socket
@@ -210,7 +211,7 @@ impl Connection {
     }
 
     fn decode(&mut self, text: &str) -> Event {
-        if text.len() > MAX_FRAME {
+        if text.len() > self.max_frame {
             return self.gap(GapReason::Oversized);
         }
         let value: Value = match serde_json::from_str(text) {
@@ -387,6 +388,7 @@ mod tests {
             .expect("client");
         let mut connection = Connection {
             socket,
+            max_frame: client.realtime_frame_limit(),
             client,
             service: Service::Primary,
             ready_tables: HashSet::new(),
@@ -449,6 +451,7 @@ mod tests {
             .expect("client");
         let mut connection = Connection {
             socket,
+            max_frame: client.realtime_frame_limit(),
             client: client.clone(),
             service: Service::Primary,
             ready_tables: HashSet::new(),

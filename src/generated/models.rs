@@ -54,6 +54,61 @@ pub type AddressNewResponse = AddressGetResponseItem;
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct AddressNewBody {
+    #[serde(rename = "address")]
+    pub address: String,
+    #[serde(rename = "beneficiary")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beneficiary: Option<String>,
+    #[serde(rename = "currency")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+    #[serde(rename = "memo")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memo: Option<String>,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "network")]
+    pub network: String,
+    #[serde(rename = "note")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    #[serde(rename = "otpToken")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub otp_token: Option<String>,
+    #[serde(rename = "skip2FA")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip2_fa: Option<bool>,
+    #[serde(rename = "skipConfirm")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip_confirm: Option<bool>,
+    #[serde(rename = "vasp")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vasp: Option<String>,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct AddressUpdateBody {
+    #[serde(rename = "addressId")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub address_id: rust_decimal::Decimal,
+    #[serde(rename = "beneficiary")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beneficiary: Option<String>,
+    #[serde(rename = "name")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(rename = "note")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    #[serde(rename = "vasp")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vasp: Option<String>,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct AddressConfigGetResponse {
     #[serde(rename = "created")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -498,6 +553,17 @@ pub type ChatNewResponse = ChatGetResponseItem;
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct ChatNewBody {
+    #[serde(rename = "channelID")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub channel_id: Option<rust_decimal::Decimal>,
+    #[serde(rename = "message")]
+    pub message: String,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ChatGetChannelsResponseItem {
     #[serde(rename = "id")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -526,8 +592,9 @@ pub struct ChatGetConnectedResponse {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ChatGetPinnedMessageResponse {
     #[serde(rename = "channelID")]
-    #[serde(with = "crate::decimal_wire::value")]
-    pub channel_id: rust_decimal::Decimal,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub channel_id: Option<rust_decimal::Decimal>,
     #[serde(rename = "created")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created: Option<String>,
@@ -543,11 +610,13 @@ pub struct ChatGetPinnedMessageResponse {
     #[serde(with = "crate::decimal_wire::optional")]
     pub ended_user_id: Option<rust_decimal::Decimal>,
     #[serde(rename = "id")]
-    #[serde(with = "crate::decimal_wire::value")]
-    pub id: rust_decimal::Decimal,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub id: Option<rust_decimal::Decimal>,
     #[serde(rename = "messageId")]
-    #[serde(with = "crate::decimal_wire::value")]
-    pub message_id: rust_decimal::Decimal,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub message_id: Option<rust_decimal::Decimal>,
 }
 
 /// Query for the corresponding BitMEX REST operation.
@@ -903,8 +972,92 @@ pub struct GuildNewResponse {
     pub updated: String,
 }
 
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct GuildNewBody {
+    #[serde(rename = "discord")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discord: Option<String>,
+    #[serde(rename = "emoji")]
+    pub emoji: String,
+    #[serde(rename = "imgUrl")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub img_url: Option<String>,
+    #[serde(rename = "isPrivate")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_private: Option<bool>,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "potDistributionPercent")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub pot_distribution_percent: rust_decimal::Decimal,
+    #[serde(rename = "potDistributionType")]
+    pub pot_distribution_type: String,
+    #[serde(rename = "telegram")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub telegram: Option<String>,
+    #[serde(rename = "twitter")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub twitter: Option<String>,
+}
+
 /// Operation-specific name for a shared BitMEX object contract.
 pub type GuildEditResponse = GuildNewResponse;
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct GuildEditBody {
+    #[serde(rename = "discord")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discord: Option<String>,
+    #[serde(rename = "emoji")]
+    pub emoji: String,
+    #[serde(rename = "imgUrl")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub img_url: Option<String>,
+    #[serde(rename = "isPrivate")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_private: Option<bool>,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "potDistributionPercent")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub pot_distribution_percent: rust_decimal::Decimal,
+    #[serde(rename = "potDistributionType")]
+    pub pot_distribution_type: String,
+    #[serde(rename = "potTraderId")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub pot_trader_id: Option<rust_decimal::Decimal>,
+    #[serde(rename = "telegram")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub telegram: Option<String>,
+    #[serde(rename = "twitter")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub twitter: Option<String>,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct GuildJoinBody {
+    #[serde(rename = "code")]
+    pub code: String,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct GuildKickBody {
+    #[serde(rename = "memberUserId")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub member_user_id: rust_decimal::Decimal,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct GuildShareTradesBody {
+    #[serde(rename = "shareTrades")]
+    pub share_trades: bool,
+}
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -1317,7 +1470,7 @@ pub type GetActiveAndIndicesInstrumentsResponseItem = GetInstrumentsResponseItem
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct GetActiveIntervalsResponseItem {
+pub struct GetActiveIntervalsResponse {
     #[serde(rename = "intervals")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub intervals: Option<Vec<String>>,
@@ -1674,6 +1827,45 @@ pub struct GetLiquidationQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reverse: Option<bool>,
 }
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct ManagedSubAccountBindingApproveBody {
+    #[serde(rename = "bindingId")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub binding_id: rust_decimal::Decimal,
+}
+
+/// Operation-specific name for a shared BitMEX object contract.
+pub type ManagedSubAccountBindingCancelBody = ManagedSubAccountBindingApproveBody;
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct ManagedSubAccountBindingCreateMsaBody {
+    #[serde(rename = "accountName")]
+    pub account_name: String,
+    #[serde(rename = "otpToken")]
+    pub otp_token: String,
+    #[serde(rename = "tradingTeamId")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub trading_team_id: rust_decimal::Decimal,
+}
+
+/// Operation-specific name for a shared BitMEX object contract.
+pub type ManagedSubAccountBindingRejectBody = ManagedSubAccountBindingApproveBody;
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct ManagedSubAccountBindingToggleTradeHistoryBody {
+    #[serde(rename = "bindingId")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub binding_id: rust_decimal::Decimal,
+    #[serde(rename = "visible")]
+    pub visible: bool,
+}
+
+/// Operation-specific name for a shared BitMEX object contract.
+pub type ManagedSubAccountBindingUnbindBody = ManagedSubAccountBindingApproveBody;
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -3292,6 +3484,13 @@ pub struct UserGetResponse {
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserCreateSubAccountBody {
+    #[serde(rename = "accountName")]
+    pub account_name: String,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct GetAffiliateStatusResponseItem {
     #[serde(rename = "account")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3413,6 +3612,13 @@ pub struct UserCancelWithdrawalResponse {
     pub wallet_balance: Option<rust_decimal::Decimal>,
 }
 
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserCancelWithdrawalBody {
+    #[serde(rename = "token")]
+    pub token: String,
+}
+
 /// Query for the corresponding BitMEX REST operation.
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct UserCheckReferralCodeQuery {
@@ -3447,6 +3653,15 @@ pub struct GetUserCommissionResponseItem {
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserCommunicationTokenBody {
+    #[serde(rename = "platformAgent")]
+    pub platform_agent: String,
+    #[serde(rename = "token")]
+    pub token: String,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct UserConfirmResponse {
     #[serde(rename = "authorizedAccounts")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3473,11 +3688,26 @@ pub struct UserConfirmResponse {
 }
 
 /// Operation-specific name for a shared BitMEX object contract.
+pub type UserConfirmBody = UserCancelWithdrawalBody;
+
+/// Operation-specific name for a shared BitMEX object contract.
 pub type UserConfirmWithdrawalResponse = UserCancelWithdrawalResponse;
+
+/// Operation-specific name for a shared BitMEX object contract.
+pub type UserConfirmWithdrawalBody = UserCancelWithdrawalBody;
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct GetUserCsaResponseItem {
+pub struct UserCreateIndependentSubaccountBody {
+    #[serde(rename = "accountName")]
+    pub account_name: String,
+    #[serde(rename = "email")]
+    pub email: String,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct GetUserCsaResponseCsasItem {
     #[serde(rename = "account")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub account: Option<i64>,
@@ -3543,6 +3773,13 @@ pub struct GetUserCsaResponseItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "crate::decimal_wire::optional")]
     pub trading_obligation: Option<rust_decimal::Decimal>,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct GetUserCsaResponse {
+    #[serde(rename = "csas")]
+    pub csas: Vec<GetUserCsaResponseCsasItem>,
 }
 
 /// Query for the corresponding BitMEX REST operation.
@@ -3939,6 +4176,16 @@ pub type UserSavePreferencesResponse = UserGetResponse;
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserSavePreferencesBody {
+    #[serde(rename = "overwrite")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overwrite: Option<bool>,
+    #[serde(rename = "prefs")]
+    pub prefs: String,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct GetQuoteFillRatioResponseItem {
     #[serde(rename = "account")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4018,6 +4265,42 @@ pub struct UserGetQuoteValueRatioQuery {
 
 /// Operation-specific name for a shared BitMEX object contract.
 pub type UserRequestWithdrawalResponse = UserCancelWithdrawalResponse;
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserRequestWithdrawalBody {
+    #[serde(rename = "address")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address: Option<String>,
+    #[serde(rename = "addressId")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub address_id: Option<rust_decimal::Decimal>,
+    #[serde(rename = "amount")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub amount: rust_decimal::Decimal,
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fee")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub fee: Option<rust_decimal::Decimal>,
+    #[serde(rename = "memo")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memo: Option<String>,
+    #[serde(rename = "network")]
+    pub network: String,
+    #[serde(rename = "otpToken")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub otp_token: Option<String>,
+    #[serde(rename = "targetUserId")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub target_user_id: Option<rust_decimal::Decimal>,
+    #[serde(rename = "text")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+}
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -4229,7 +4512,7 @@ pub struct GetTradingSettingsQuery {
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct GetTradingVolumeResponse {
+pub struct GetTradingVolumeResponseItem {
     #[serde(rename = "advUsd")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "crate::decimal_wire::optional")]
@@ -4275,6 +4558,16 @@ pub struct GetUnstakingRequestsResponseItem {
 pub struct GetUnstakingRequestsQuery {
     #[serde(rename = "status")]
     pub status: String,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserUpdateSubAccountBody {
+    #[serde(rename = "accountName")]
+    pub account_name: String,
+    #[serde(rename = "targetAccountId")]
+    #[serde(with = "crate::decimal_wire::value")]
+    pub target_account_id: rust_decimal::Decimal,
 }
 
 /// BitMEX provider object from the pinned REST contract.
@@ -4563,6 +4856,13 @@ pub struct WalletTransferBody {
     pub withdrawal_amount: Option<i64>,
 }
 
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserCancelPendingWithdrawalBody {
+    #[serde(rename = "transactID")]
+    pub transact_id: String,
+}
+
 /// Query for the corresponding BitMEX REST operation.
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct UserAffiliatesGetQuery {
@@ -4582,7 +4882,7 @@ pub struct UserAffiliatesGetQuery {
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct UserEventGetResponseItem {
+pub struct UserEventGetResponseUserEventsItem {
     #[serde(rename = "created")]
     pub created: String,
     #[serde(rename = "createdById")]
@@ -4616,6 +4916,13 @@ pub struct UserEventGetResponseItem {
     pub user_id: rust_decimal::Decimal,
 }
 
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserEventGetResponse {
+    #[serde(rename = "userEvents")]
+    pub user_events: Vec<UserEventGetResponseUserEventsItem>,
+}
+
 /// Query for the corresponding BitMEX REST operation.
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct UserEventGetQuery {
@@ -4627,6 +4934,13 @@ pub struct UserEventGetQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(with = "crate::decimal_wire::optional")]
     pub start_id: Option<rust_decimal::Decimal>,
+}
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserPriceAlertBulkDeleteBody {
+    #[serde(rename = "ids")]
+    pub ids: String,
 }
 
 /// BitMEX provider object from the pinned REST contract.
@@ -4711,8 +5025,76 @@ pub struct UserPriceAlertGetAlertsQuery {
 /// Operation-specific name for a shared BitMEX object contract.
 pub type UserPriceAlertCreateAlertResponse = UserPriceAlertGetAlertsResponseItem;
 
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserPriceAlertCreateAlertBody {
+    #[serde(rename = "alertType")]
+    pub alert_type: String,
+    #[serde(rename = "direction")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<String>,
+    #[serde(rename = "movementDirection")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub movement_direction: Option<String>,
+    #[serde(rename = "note")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    #[serde(rename = "symbol")]
+    pub symbol: String,
+    #[serde(rename = "targetPrice")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub target_price: Option<rust_decimal::Decimal>,
+    #[serde(rename = "threshold")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub threshold: Option<rust_decimal::Decimal>,
+    #[serde(rename = "timeframeMs")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub timeframe_ms: Option<rust_decimal::Decimal>,
+    #[serde(rename = "triggerMode")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_mode: Option<String>,
+}
+
 /// Operation-specific name for a shared BitMEX object contract.
 pub type UserPriceAlertUpdateAlertResponse = UserPriceAlertGetAlertsResponseItem;
+
+/// BitMEX provider object from the pinned REST contract.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct UserPriceAlertUpdateAlertBody {
+    #[serde(rename = "direction")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<String>,
+    #[serde(rename = "movementDirection")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub movement_direction: Option<String>,
+    #[serde(rename = "note")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    #[serde(rename = "status")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(rename = "symbol")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub symbol: Option<String>,
+    #[serde(rename = "targetPrice")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub target_price: Option<rust_decimal::Decimal>,
+    #[serde(rename = "threshold")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub threshold: Option<rust_decimal::Decimal>,
+    #[serde(rename = "timeframeMs")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::decimal_wire::optional")]
+    pub timeframe_ms: Option<rust_decimal::Decimal>,
+    #[serde(rename = "triggerMode")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_mode: Option<String>,
+}
 
 /// BitMEX provider object from the pinned REST contract.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
