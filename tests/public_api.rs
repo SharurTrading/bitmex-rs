@@ -85,7 +85,9 @@ async fn form_body_is_encoded_and_signed_as_sent() {
             .expect("signed request header")
     };
     let expires = header("api-expires:");
-    let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(b"fixture-secret").expect("HMAC");
+    let mut mac =
+        <hmac::Hmac<sha2::Sha256> as hmac::digest::KeyInit>::new_from_slice(b"fixture-secret")
+            .expect("HMAC");
     mac.update(format!("POST/api/v1/chat{expires}{payload}").as_bytes());
     assert_eq!(
         header("api-signature:"),
