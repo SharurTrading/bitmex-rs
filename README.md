@@ -10,8 +10,10 @@
 > [!WARNING]
 > **Pre-release: live testing is not yet complete.** Four read-only Testnet probes passed on
 > 2026-09-25, alongside deterministic local fixtures. No Mainnet account or live order has been
-> tested. Validate the client and your reconciliation flow independently before using it for live
-> trading.
+> tested. BitMEX does not guarantee that Testnet reproduces Mainnet behavior; the observed
+> [environment comparison](docs/coverage.md) separates shared schema drift from Testnet-only
+> evidence. Validate the client and your reconciliation flow independently before using it for
+> live trading.
 
 An async, provider-native Rust client for the [BitMEX REST API](https://docs.bitmex.com/api-explorer)
 and [JSON WebSocket API](https://www.bitmex.com/app/wsAPI). The Cargo package is `bitmex-client`,

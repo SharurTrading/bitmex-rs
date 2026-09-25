@@ -15,8 +15,9 @@ of unspecified objects and `secret` as required. Testnet returned arrays of stri
 `secret` remains optional and redacted from `Debug`. The pinned source facts remain unchanged;
 the generator carries this reviewed compatibility rule.
 
-The 2026-09-25 Testnet GET sweep found seven more response-shape differences. The generator applies
-the following narrow compatibility rules without altering the pinned page snapshot:
+The 2026-09-25 Testnet GET sweep found seven more response-shape differences from the current
+endpoint pages. The generator applies the following narrow compatibility rules without altering
+the pinned page snapshot:
 
 | Route | Observed Testnet success body |
 | --- | --- |
@@ -27,6 +28,24 @@ the following narrow compatibility rules without altering the pinned page snapsh
 | `GET /api/v1/user/tradingVolume` | Array of volume objects rather than one object |
 | `GET /api/v1/userEvent` | Object containing a `userEvents` array rather than a bare array |
 | `GET /api/v1/wallet/currencies` | Map keyed by currency rather than an array |
+
+The [Testnet API Explorer](https://testnet.bitmex.com/api/explorer/) and the
+[Mainnet API Explorer](https://www.bitmex.com/api/explorer/) each publish 120 operations. On
+2026-09-25 their operation IDs, methods, paths, parameters, and response schemas matched; the
+14 differing operation descriptions only substituted Testnet links for Mainnet links. Both
+older explorers include v1 `POST /api/v1/order` and omit the separately documented
+[v2 `POST /api/v2/order`](https://docs.bitmex.com/api-explorer/new-order-1). Thus the Testnet
+explorer is not evidence that v2 is unavailable, nor an independent up-to-date contract for it.
+
+Read-only public comparisons showed that `instrument/activeIntervals` returned an object and
+`wallet/currencies` returned a keyed map on **both** environments. Those two overrides address
+published schema drift, not a known Testnet-only behavior. `chat/pinned?channelID=1` returned a
+populated object on Mainnet and `{}` on Testnet; the optional-field model accepts both. The
+remaining four private response shapes have only been observed with a Testnet key, so their
+Mainnet behavior is unverified. BitMEX's
+[Testnet terms](https://static.bitmex.com/documents/Terms_of_Service__June_2025.pdf) explicitly do not guarantee that its simulated
+trading conditions or behaviors duplicate Mainnet. A Testnet response alone is therefore not
+proof of Mainnet success behavior.
 
 All 13 form-only callable operations now take a typed body, serialize it as
 `application/x-www-form-urlencoded`, and sign those exact bytes. Previously the generator only
