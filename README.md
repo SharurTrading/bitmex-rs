@@ -7,9 +7,9 @@
 [![JSON WebSocket: 30 topics](https://img.shields.io/badge/JSON%20WebSocket-30%20topics-blue.svg)](spec/official/ws-topics.json)
 
 > [!WARNING]
-> **Pre-release:** verification uses deterministic local fixtures. No authenticated Testnet or
-> Mainnet account and no live order has been tested. Validate the client and your reconciliation
-> flow independently before using it for live trading.
+> **Pre-release:** four read-only Testnet probes passed on 2026-09-25, alongside deterministic
+> local fixtures. No Mainnet account or live order has been tested. Validate the client and your
+> reconciliation flow independently before using it for live trading.
 
 An async, provider-native Rust client for the [BitMEX REST API](https://docs.bitmex.com/api-explorer)
 and [JSON WebSocket API](https://www.bitmex.com/app/wsAPI). The Cargo package is `bitmex-client`,
@@ -29,6 +29,7 @@ version is **1.95.0**.
 | Documentation blockers | 27 pages with no published response fields |
 | JSON WebSocket topics | 30 named topics on primary and platform sockets |
 | Order version | v2 preferred; v1 available for documented compatibility |
+| Testnet validation | Public instruments, authenticated API-key self and order query, and private order-feed subscription passed read-only |
 
 The current BitMEX endpoint pages, reviewed on 2026-09-25, are the REST authority. The older
 Explorer Swagger lists 120 operations and omits the current
@@ -110,10 +111,16 @@ Normal CI is credential-free. It runs formatting, strict Clippy, all-feature tes
 offline generation and coverage checks, and `cargo package --locked` on Rust 1.95. Each of the
 114 callable REST methods has deterministic loopback success and rejection fixtures. Unit tests
 cover signing, exact decimals, shared mutation fences and rate admission, WebSocket lifecycle,
-and L2 recovery. These tests establish the documented wire surface, not authenticated exchange
-behavior.
+and L2 recovery. These tests establish the documented wire surface. Four read-only Testnet
+probes passed on 2026-09-25: public instruments, signed `GET /api/v1/apiKey/self`, bounded
+`GET /api/v1/order`, and an authenticated private `order` WebSocket subscription. A separate
+account-margin query returned HTTP 401 with the supplied test key, so account-data access remains
+unverified. The live REST
+response also exposed the API-key schema drift recorded in [coverage notes](docs/coverage.md).
 
-The optional read-only Testnet probe is ignored and must be explicitly armed:
+The optional read-only Testnet probes are ignored and must be explicitly armed. The authenticated
+probes require `BITMEX_TESTNET_API_KEY` and `BITMEX_TESTNET_API_SECRET` from the caller's secret
+store:
 
 ```sh
 BITMEX_READ_ONLY_PROBE=I_ACCEPT_READ_ONLY_TESTNET \
