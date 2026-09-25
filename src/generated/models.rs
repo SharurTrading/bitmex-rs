@@ -116,7 +116,7 @@ pub struct ApiKeyGetResponseItem {
     pub cidr: Option<String>,
     #[serde(rename = "cidrs")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cidrs: Option<Vec<crate::UnknownObject>>,
+    pub cidrs: Option<Vec<crate::ApiKeyListEntry>>,
     #[serde(rename = "created")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created: Option<String>,
@@ -132,9 +132,10 @@ pub struct ApiKeyGetResponseItem {
     pub nonce: rust_decimal::Decimal,
     #[serde(rename = "permissions")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub permissions: Option<Vec<crate::UnknownObject>>,
+    pub permissions: Option<Vec<crate::ApiKeyListEntry>>,
     #[serde(rename = "secret")]
-    pub secret: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secret: Option<String>,
     #[serde(rename = "targetAccountId")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "crate::decimal_wire::optional")]

@@ -98,7 +98,14 @@ class Generator:
                 field = distinct_field(wire, used_fields)
                 has_secret |= field in {"secret", "password", "api_secret", "api_key", "access_token", "refresh_token"}
                 child_type = self.rust_type(child, model + pascal(wire))
+                # Live Testnet GET /api/v1/apiKey/self (2026-09-25) returns string
+                # list entries and omits secret, unlike its current page schema.
+                # The union also accepts the page's unspecified object entries.
+                if model == "ApiKeyGetResponseItem" and wire in {"cidrs", "permissions"}:
+                    child_type = "Vec<crate::ApiKeyListEntry>"
                 optional = wire not in required or child.get("nullable", False)
+                if model == "ApiKeyGetResponseItem" and wire == "secret":
+                    optional = True
                 actual_type = f"Option<{child_type}>" if optional else child_type
                 attrs = [f'    #[serde(rename = "{wire}")]']
                 if optional:

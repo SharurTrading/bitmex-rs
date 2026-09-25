@@ -8,6 +8,18 @@ The ledger at `docs/coverage.json` records all 141 operations. **114 have callab
 
 The ledger's `access` notes mark broker, managed-subaccount, and account-setting or withdrawal routes where API-key permissions or venue eligibility can limit use. A typed method documents the wire contract; it does not grant access to the route. BitMEX's [API key guidance](https://www.bitmex.com/app/apiKeysUsage) describes account-setting restrictions.
 
+An authenticated, read-only Testnet probe on 2026-09-25 exposed one response drift in
+`GET /api/v1/apiKey/self`: the current page schema declares `cidrs` and `permissions` as arrays
+of unspecified objects and `secret` as required. Testnet returned arrays of strings and omitted
+`secret`. `ApiKeyListEntry` accepts both the observed strings and the documented objects, and
+`secret` remains optional and redacted from `Debug`. The pinned source facts remain unchanged;
+the generator carries this reviewed compatibility rule.
+
 The realtime API exposes all 30 documented topic names, the two service endpoints, subscription acknowledgement, table actions, exact decimal row values, and explicit continuity gaps. Its table rows currently use a typed recursive field value rather than separate static Rust structs for every feed. The order-book helper is opt-in, bounded, and invalidates on gaps. This is **topic and wire coverage**, not a claim that all per-topic row fields have static models.
 
-Normal CI uses local fixtures and no credentials. The ignored Testnet probe is read-only and must be explicitly armed. No production account has been tested, and no live order has been submitted by this repository.
+Normal CI uses local fixtures and no credentials. The ignored Testnet probes are read-only and must
+be explicitly armed. On 2026-09-25, public instrument data, signed API-key self, bounded order
+query, and a private order WebSocket subscription passed with a Testnet key.
+`GET /api/v1/user/margin` returned HTTP 401 with that key; no account-data capability is claimed
+from it. No production account has been
+tested, and no live order has been submitted by this repository.

@@ -25,3 +25,13 @@ pub use ids::{AccountId, PathId, Symbol};
 /// Operations whose success contract consists only of this placeholder are
 /// recorded as documentation-blocked and do not receive public methods.
 pub type UnknownObject = std::collections::BTreeMap<String, serde_json::Value>;
+
+/// API-key list entry: Testnet sends text while the current page declares an unspecified object.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+pub enum ApiKeyListEntry {
+    /// Observed text entry.
+    Text(String),
+    /// Documented object entry.
+    Object(UnknownObject),
+}
