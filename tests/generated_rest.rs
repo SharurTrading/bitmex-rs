@@ -7,7 +7,11 @@ use bitmex_client::{ApiCredentials, Client, Environment, PathId};
 
 #[tokio::test]
 async fn address_get_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(
+        200,
+        r#"[{"address":"fixture","name":"fixture","network":"fixture"}]"#,
+    )
+    .await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -46,6 +50,9 @@ async fn address_get_success_and_rejection() {
 
 #[tokio::test]
 async fn address_new_success_and_rejection() {
+    let body: AddressNewBody =
+        serde_json::from_str(r#"{"network":"fixture","address":"fixture","name":"fixture"}"#)
+            .expect("body fixture");
     let (url, received) = support::serve(
         200,
         r#"{"address":"fixture","name":"fixture","network":"fixture"}"#,
@@ -56,7 +63,7 @@ async fn address_new_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.address_new().await;
+    let result = client.address_new(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/address: {result:?}"
@@ -64,7 +71,28 @@ async fn address_new_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("POST /api/v1/address"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("network=")),
+        "missing required request field network"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("address=")),
+        "missing required request field address"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("name=")),
+        "missing required request field name"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -75,7 +103,7 @@ async fn address_new_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.address_new().await;
+    let result = client.address_new(&body).await;
     assert!(
         matches!(
             result,
@@ -89,13 +117,14 @@ async fn address_new_success_and_rejection() {
 
 #[tokio::test]
 async fn address_update_success_and_rejection() {
+    let body: AddressUpdateBody = serde_json::from_str(r#"{"addressId":1}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"false"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.address_update().await;
+    let result = client.address_update(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for PUT /api/v1/address: {result:?}"
@@ -103,7 +132,16 @@ async fn address_update_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("PUT /api/v1/address"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("addressId=")),
+        "missing required request field addressId"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -114,7 +152,7 @@ async fn address_update_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.address_update().await;
+    let result = client.address_update(&body).await;
     assert!(
         matches!(
             result,
@@ -174,7 +212,7 @@ async fn address_config_get_success_and_rejection() {
 #[tokio::test]
 async fn announcement_get_success_and_rejection() {
     let query = AnnouncementGetQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"id":1}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -213,7 +251,7 @@ async fn announcement_get_success_and_rejection() {
 
 #[tokio::test]
 async fn announcement_get_urgent_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"id":1}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -259,7 +297,11 @@ async fn announcement_get_urgent_success_and_rejection() {
 #[tokio::test]
 async fn api_key_get_success_and_rejection() {
     let query = ApiKeyGetQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(
+        200,
+        r#"[{"id":"fixture","secret":"fixture","name":"fixture","nonce":1,"userId":1}]"#,
+    )
+    .await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -410,7 +452,28 @@ async fn create_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"account\"")),
+        "missing required request field account"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"logged\"")),
+        "missing required request field logged"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"typ\"")),
+        "missing required request field typ"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -456,7 +519,16 @@ async fn update_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"account\"")),
+        "missing required request field account"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -503,7 +575,22 @@ async fn add_new_account_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"timestamp\"")),
+        "missing required request field timestamp"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"type\"")),
+        "missing required request field type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -554,7 +641,22 @@ async fn change_account_restriction_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"accountId\"")),
+        "missing required request field accountId"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"state\"")),
+        "missing required request field state"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -606,7 +708,28 @@ async fn create_brokerage_fee_tier_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"account\"")),
+        "missing required request field account"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"brokerMakerFee\"")),
+        "missing required request field brokerMakerFee"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"brokerTakerFee\"")),
+        "missing required request field brokerTakerFee"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -653,7 +776,22 @@ async fn update_broker_fee_account_map_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"account\"")),
+        "missing required request field account"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"feeAccount\"")),
+        "missing required request field feeAccount"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -706,7 +844,34 @@ async fn update_brokerage_fee_tier_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"account\"")),
+        "missing required request field account"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"brokerMakerFee\"")),
+        "missing required request field brokerMakerFee"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"brokerTakerFee\"")),
+        "missing required request field brokerTakerFee"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"feeGroupID\"")),
+        "missing required request field feeGroupID"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -735,7 +900,7 @@ async fn update_brokerage_fee_tier_success_and_rejection() {
 #[tokio::test]
 async fn update_derivatives_fee_discount_success_and_rejection() {
     let body: UpdateDerivativesFeeDiscountBody =
-        serde_json::from_str(r#"{"accounts":1,"currency":[]}"#).expect("body fixture");
+        serde_json::from_str(r#"{"accounts":1,"currency":["fixture"]}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"{"account":1,"currency":"fixture"}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
@@ -753,7 +918,22 @@ async fn update_derivatives_fee_discount_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"accounts\"")),
+        "missing required request field accounts"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"currency\"")),
+        "missing required request field currency"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -782,8 +962,8 @@ async fn update_derivatives_fee_discount_success_and_rejection() {
 #[tokio::test]
 async fn update_spot_fee_discount_success_and_rejection() {
     let body: UpdateSpotFeeDiscountBody =
-        serde_json::from_str(r#"{"accounts":1,"currency":[]}"#).expect("body fixture");
-    let (url, received) = support::serve(200, r#"[]"#).await;
+        serde_json::from_str(r#"{"accounts":1,"currency":["fixture"]}"#).expect("body fixture");
+    let (url, received) = support::serve(200, r#"[{"account":1,"currency":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -800,7 +980,22 @@ async fn update_spot_fee_discount_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"accounts\"")),
+        "missing required request field accounts"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"currency\"")),
+        "missing required request field currency"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -847,7 +1042,22 @@ async fn update_user_fee_tier_map_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"account\"")),
+        "missing required request field account"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"feeGroupID\"")),
+        "missing required request field feeGroupID"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -876,7 +1086,11 @@ async fn update_user_fee_tier_map_success_and_rejection() {
 #[tokio::test]
 async fn chat_get_success_and_rejection() {
     let query = ChatGetQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(
+        200,
+        r#"[{"date":"fixture","user":"fixture","message":"fixture","html":"fixture"}]"#,
+    )
+    .await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -915,6 +1129,7 @@ async fn chat_get_success_and_rejection() {
 
 #[tokio::test]
 async fn chat_new_success_and_rejection() {
+    let body: ChatNewBody = serde_json::from_str(r#"{"message":"fixture"}"#).expect("body fixture");
     let (url, received) = support::serve(
         200,
         r#"{"date":"fixture","user":"fixture","message":"fixture","html":"fixture"}"#,
@@ -925,7 +1140,7 @@ async fn chat_new_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.chat_new().await;
+    let result = client.chat_new(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/chat: {result:?}"
@@ -933,7 +1148,16 @@ async fn chat_new_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("POST /api/v1/chat"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("message=")),
+        "missing required request field message"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -944,7 +1168,7 @@ async fn chat_new_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.chat_new().await;
+    let result = client.chat_new(&body).await;
     assert!(
         matches!(
             result,
@@ -958,7 +1182,7 @@ async fn chat_new_success_and_rejection() {
 
 #[tokio::test]
 async fn chat_get_channels_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"name":"fixture","isPrivate":false}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1049,7 +1273,7 @@ async fn chat_get_connected_success_and_rejection() {
 #[tokio::test]
 async fn chat_get_pinned_message_success_and_rejection() {
     let query = ChatGetPinnedMessageQuery::default();
-    let (url, received) = support::serve(200, r#"{"id":1,"channelID":1,"messageId":1}"#).await;
+    let (url, received) = support::serve(200, r#"{}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1089,7 +1313,7 @@ async fn chat_get_pinned_message_success_and_rejection() {
 #[tokio::test]
 async fn get_execution_success_and_rejection() {
     let query = GetExecutionQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1,"cumQty":1,"execID":"fixture","execType":"New","leavesQty":1,"orderID":"fixture","orderQty":1,"side":"Buy","symbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1129,7 +1353,7 @@ async fn get_execution_success_and_rejection() {
 #[tokio::test]
 async fn get_execution_trade_history_success_and_rejection() {
     let query = GetExecutionTradeHistoryQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1,"cumQty":1,"execID":"fixture","execType":"New","leavesQty":1,"orderID":"fixture","orderQty":1,"side":"Buy","symbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1175,7 +1399,7 @@ async fn get_execution_trade_history_success_and_rejection() {
 #[tokio::test]
 async fn get_funding_success_and_rejection() {
     let query = GetFundingQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1214,7 +1438,7 @@ async fn get_funding_success_and_rejection() {
 
 #[tokio::test]
 async fn guild_get_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1253,13 +1477,14 @@ async fn guild_get_success_and_rejection() {
 
 #[tokio::test]
 async fn guild_new_success_and_rejection() {
+    let body: GuildNewBody = serde_json::from_str(r#"{"name":"fixture","emoji":"fixture","potDistributionPercent":1,"potDistributionType":"fixture"}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"{"created":"fixture","updated":"fixture","name":"fixture","chatChannelId":1,"isPrivate":false}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.guild_new().await;
+    let result = client.guild_new(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/guild: {result:?}"
@@ -1267,7 +1492,34 @@ async fn guild_new_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("POST /api/v1/guild"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("name=")),
+        "missing required request field name"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("emoji=")),
+        "missing required request field emoji"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("potDistributionPercent=")),
+        "missing required request field potDistributionPercent"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("potDistributionType=")),
+        "missing required request field potDistributionType"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -1278,7 +1530,7 @@ async fn guild_new_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.guild_new().await;
+    let result = client.guild_new(&body).await;
     assert!(
         matches!(
             result,
@@ -1292,13 +1544,14 @@ async fn guild_new_success_and_rejection() {
 
 #[tokio::test]
 async fn guild_edit_success_and_rejection() {
+    let body: GuildEditBody = serde_json::from_str(r#"{"name":"fixture","emoji":"fixture","potDistributionPercent":1,"potDistributionType":"fixture"}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"{"created":"fixture","updated":"fixture","name":"fixture","chatChannelId":1,"isPrivate":false}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.guild_edit().await;
+    let result = client.guild_edit(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for PUT /api/v1/guild: {result:?}"
@@ -1306,7 +1559,34 @@ async fn guild_edit_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("PUT /api/v1/guild"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("name=")),
+        "missing required request field name"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("emoji=")),
+        "missing required request field emoji"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("potDistributionPercent=")),
+        "missing required request field potDistributionPercent"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("potDistributionType=")),
+        "missing required request field potDistributionType"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -1317,7 +1597,7 @@ async fn guild_edit_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.guild_edit().await;
+    let result = client.guild_edit(&body).await;
     assert!(
         matches!(
             result,
@@ -1332,7 +1612,7 @@ async fn guild_edit_success_and_rejection() {
 #[tokio::test]
 async fn get_instruments_success_and_rejection() {
     let query = GetInstrumentsQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1371,7 +1651,7 @@ async fn get_instruments_success_and_rejection() {
 
 #[tokio::test]
 async fn get_active_instruments_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1416,7 +1696,7 @@ async fn get_active_instruments_success_and_rejection() {
 
 #[tokio::test]
 async fn get_active_and_indices_instruments_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1461,7 +1741,7 @@ async fn get_active_and_indices_instruments_success_and_rejection() {
 
 #[tokio::test]
 async fn get_active_intervals_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"{}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1507,7 +1787,7 @@ async fn get_active_intervals_success_and_rejection() {
 #[tokio::test]
 async fn get_composite_index_success_and_rejection() {
     let query = GetCompositeIndexQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1552,7 +1832,7 @@ async fn get_composite_index_success_and_rejection() {
 
 #[tokio::test]
 async fn get_indices_instruments_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1598,7 +1878,7 @@ async fn get_indices_instruments_success_and_rejection() {
 #[tokio::test]
 async fn get_instrument_usd_volume_success_and_rejection() {
     let query = GetInstrumentUsdVolumeQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1644,7 +1924,7 @@ async fn get_instrument_usd_volume_success_and_rejection() {
 #[tokio::test]
 async fn get_insurances_success_and_rejection() {
     let query = GetInsurancesQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1729,7 +2009,7 @@ async fn leaderboard_get_name_success_and_rejection() {
 #[tokio::test]
 async fn get_liquidation_success_and_rejection() {
     let query = GetLiquidationQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1768,7 +2048,7 @@ async fn get_liquidation_success_and_rejection() {
 
 #[tokio::test]
 async fn managed_sub_account_binding_get_investor_bindings_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1817,7 +2097,7 @@ async fn managed_sub_account_binding_get_investor_bindings_success_and_rejection
 
 #[tokio::test]
 async fn managed_sub_account_binding_get_trading_team_bindings_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1868,7 +2148,7 @@ async fn managed_sub_account_binding_get_trading_team_bindings_success_and_rejec
 async fn cancel_order_v1_success_and_rejection() {
     let body: CancelOrderV1Body =
         serde_json::from_str(r#"{"orderID":["fixture"]}"#).expect("body fixture");
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1,"cumQty":1,"leavesQty":1,"orderID":"fixture","orderQty":1,"side":"Buy","symbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1882,7 +2162,10 @@ async fn cancel_order_v1_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("DELETE /api/v1/order"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -1908,7 +2191,7 @@ async fn cancel_order_v1_success_and_rejection() {
 #[tokio::test]
 async fn get_order_v1_success_and_rejection() {
     let query = GetOrderV1Query::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1,"cumQty":1,"leavesQty":1,"orderID":"fixture","orderQty":1,"side":"Buy","symbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -1965,7 +2248,16 @@ async fn new_order_v1_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("POST /api/v1/order"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"symbol\"")),
+        "missing required request field symbol"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2006,7 +2298,10 @@ async fn amend_order_v1_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("PUT /api/v1/order"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2032,7 +2327,7 @@ async fn amend_order_v1_success_and_rejection() {
 #[tokio::test]
 async fn cancel_all_order_v1_success_and_rejection() {
     let body: CancelAllOrderV1Body = serde_json::from_str(r#"{}"#).expect("body fixture");
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1,"cumQty":1,"leavesQty":1,"orderID":"fixture","orderQty":1,"side":"Buy","symbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2046,7 +2341,10 @@ async fn cancel_all_order_v1_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("DELETE /api/v1/order/all"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2072,7 +2370,7 @@ async fn cancel_all_order_v1_success_and_rejection() {
 #[tokio::test]
 async fn cancel_all_after_order_v1_success_and_rejection() {
     let body: CancelAllAfterOrderV1Body = serde_json::from_str(r#"{}"#).expect("body fixture");
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2089,7 +2387,10 @@ async fn cancel_all_after_order_v1_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2195,7 +2496,7 @@ async fn porl_get_nonce_success_and_rejection() {
 
 #[tokio::test]
 async fn porl_get_snapshots_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2241,7 +2542,7 @@ async fn porl_get_snapshots_success_and_rejection() {
 #[tokio::test]
 async fn get_position_success_and_rejection() {
     let query = GetPositionQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2299,7 +2600,22 @@ async fn cross_leverage_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"leverage\"")),
+        "missing required request field leverage"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"symbol\"")),
+        "missing required request field symbol"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2345,7 +2661,16 @@ async fn isolate_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"symbol\"")),
+        "missing required request field symbol"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2392,7 +2717,22 @@ async fn leverage_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"leverage\"")),
+        "missing required request field leverage"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"symbol\"")),
+        "missing required request field symbol"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2439,7 +2779,22 @@ async fn risk_limit_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"riskLimit\"")),
+        "missing required request field riskLimit"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"symbol\"")),
+        "missing required request field symbol"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2486,7 +2841,22 @@ async fn transfer_margin_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"amount\"")),
+        "missing required request field amount"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"symbol\"")),
+        "missing required request field symbol"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -2515,7 +2885,7 @@ async fn transfer_margin_success_and_rejection() {
 #[tokio::test]
 async fn get_position_history_success_and_rejection() {
     let query = GetPositionHistoryQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2561,7 +2931,7 @@ async fn get_position_history_success_and_rejection() {
 #[tokio::test]
 async fn get_quote_success_and_rejection() {
     let query = GetQuoteQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2601,7 +2971,7 @@ async fn get_quote_success_and_rejection() {
 #[tokio::test]
 async fn get_quote_bucketed_success_and_rejection() {
     let query = GetQuoteBucketedQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2646,7 +3016,7 @@ async fn get_quote_bucketed_success_and_rejection() {
 
 #[tokio::test]
 async fn referral_code_get_all_codes_for_user_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2778,7 +3148,7 @@ async fn referral_code_check_referral_code_success_and_rejection() {
 #[tokio::test]
 async fn get_settlements_success_and_rejection() {
     let query = GetSettlementsQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2817,7 +3187,7 @@ async fn get_settlements_success_and_rejection() {
 
 #[tokio::test]
 async fn get_stats_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2856,7 +3226,8 @@ async fn get_stats_success_and_rejection() {
 
 #[tokio::test]
 async fn get_stats_history_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) =
+        support::serve(200, r#"[{"date":"fixture","rootSymbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2901,7 +3272,7 @@ async fn get_stats_history_success_and_rejection() {
 
 #[tokio::test]
 async fn get_stats_history_usd_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2947,7 +3318,7 @@ async fn get_stats_history_usd_success_and_rejection() {
 #[tokio::test]
 async fn get_trade_success_and_rejection() {
     let query = GetTradeQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -2987,7 +3358,7 @@ async fn get_trade_success_and_rejection() {
 #[tokio::test]
 async fn get_trade_bucketed_success_and_rejection() {
     let query = GetTradeBucketedQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3072,7 +3443,7 @@ async fn user_get_success_and_rejection() {
 #[tokio::test]
 async fn get_affiliate_status_success_and_rejection() {
     let query = GetAffiliateStatusQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3117,13 +3488,15 @@ async fn get_affiliate_status_success_and_rejection() {
 
 #[tokio::test]
 async fn user_cancel_withdrawal_success_and_rejection() {
+    let body: UserCancelWithdrawalBody =
+        serde_json::from_str(r#"{"token":"fixture"}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"{"transactID":"fixture"}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_cancel_withdrawal().await;
+    let result = client.user_cancel_withdrawal(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/user/cancelWithdrawal: {result:?}"
@@ -3134,7 +3507,16 @@ async fn user_cancel_withdrawal_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("token=")),
+        "missing required request field token"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3145,7 +3527,7 @@ async fn user_cancel_withdrawal_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_cancel_withdrawal().await;
+    let result = client.user_cancel_withdrawal(&body).await;
     assert!(
         matches!(
             result,
@@ -3162,7 +3544,7 @@ async fn user_cancel_withdrawal_success_and_rejection() {
 
 #[tokio::test]
 async fn get_user_commission_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"{"fixture":{}}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3207,13 +3589,16 @@ async fn get_user_commission_success_and_rejection() {
 
 #[tokio::test]
 async fn user_communication_token_success_and_rejection() {
+    let body: UserCommunicationTokenBody =
+        serde_json::from_str(r#"{"token":"fixture","platformAgent":"fixture"}"#)
+            .expect("body fixture");
     let (url, received) = support::serve(200, r#"false"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_communication_token().await;
+    let result = client.user_communication_token(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/user/communicationToken: {result:?}"
@@ -3224,7 +3609,22 @@ async fn user_communication_token_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("token=")),
+        "missing required request field token"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("platformAgent=")),
+        "missing required request field platformAgent"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3235,7 +3635,7 @@ async fn user_communication_token_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_communication_token().await;
+    let result = client.user_communication_token(&body).await;
     assert!(
         matches!(
             result,
@@ -3252,13 +3652,15 @@ async fn user_communication_token_success_and_rejection() {
 
 #[tokio::test]
 async fn user_confirm_success_and_rejection() {
+    let body: UserConfirmBody =
+        serde_json::from_str(r#"{"token":"fixture"}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"{"updated":"fixture","id":"fixture"}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_confirm().await;
+    let result = client.user_confirm(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/user/confirmEmail: {result:?}"
@@ -3269,7 +3671,16 @@ async fn user_confirm_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("token=")),
+        "missing required request field token"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3280,7 +3691,7 @@ async fn user_confirm_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_confirm().await;
+    let result = client.user_confirm(&body).await;
     assert!(
         matches!(
             result,
@@ -3297,13 +3708,15 @@ async fn user_confirm_success_and_rejection() {
 
 #[tokio::test]
 async fn user_confirm_withdrawal_success_and_rejection() {
+    let body: UserConfirmWithdrawalBody =
+        serde_json::from_str(r#"{"token":"fixture"}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"{"transactID":"fixture"}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_confirm_withdrawal().await;
+    let result = client.user_confirm_withdrawal(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/user/confirmWithdrawal: {result:?}"
@@ -3314,7 +3727,16 @@ async fn user_confirm_withdrawal_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("token=")),
+        "missing required request field token"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3325,7 +3747,7 @@ async fn user_confirm_withdrawal_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_confirm_withdrawal().await;
+    let result = client.user_confirm_withdrawal(&body).await;
     assert!(
         matches!(
             result,
@@ -3342,7 +3764,7 @@ async fn user_confirm_withdrawal_success_and_rejection() {
 
 #[tokio::test]
 async fn get_user_csa_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"{"csas":[{}]}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3519,7 +3941,7 @@ async fn get_execution_history_success_and_rejection() {
 
 #[tokio::test]
 async fn user_get_wallet_transfer_accounts_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3604,7 +4026,7 @@ async fn user_logout_success_and_rejection() {
 #[tokio::test]
 async fn get_margin_success_and_rejection() {
     let query = GetMarginQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3644,7 +4066,7 @@ async fn get_margin_success_and_rejection() {
 #[tokio::test]
 async fn get_margining_mode_success_and_rejection() {
     let query = GetMarginingModeQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3707,7 +4129,10 @@ async fn margining_mode_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3753,7 +4178,10 @@ async fn position_mode_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3781,13 +4209,15 @@ async fn position_mode_success_and_rejection() {
 
 #[tokio::test]
 async fn user_save_preferences_success_and_rejection() {
+    let body: UserSavePreferencesBody =
+        serde_json::from_str(r#"{"prefs":"fixture"}"#).expect("body fixture");
     let (url, received) = support::serve(200, r#"{"username":"fixture","isUser":false}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_save_preferences().await;
+    let result = client.user_save_preferences(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/user/preferences: {result:?}"
@@ -3798,7 +4228,16 @@ async fn user_save_preferences_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("prefs=")),
+        "missing required request field prefs"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3809,7 +4248,7 @@ async fn user_save_preferences_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_save_preferences().await;
+    let result = client.user_save_preferences(&body).await;
     assert!(
         matches!(
             result,
@@ -3827,7 +4266,7 @@ async fn user_save_preferences_success_and_rejection() {
 #[tokio::test]
 async fn get_quote_fill_ratio_success_and_rejection() {
     let query = GetQuoteFillRatioQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -3918,13 +4357,16 @@ async fn user_get_quote_value_ratio_success_and_rejection() {
 
 #[tokio::test]
 async fn user_request_withdrawal_success_and_rejection() {
+    let body: UserRequestWithdrawalBody =
+        serde_json::from_str(r#"{"currency":"fixture","network":"fixture","amount":1}"#)
+            .expect("body fixture");
     let (url, received) = support::serve(200, r#"{"transactID":"fixture"}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_request_withdrawal().await;
+    let result = client.user_request_withdrawal(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/user/requestWithdrawal: {result:?}"
@@ -3935,7 +4377,28 @@ async fn user_request_withdrawal_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("currency=")),
+        "missing required request field currency"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("network=")),
+        "missing required request field network"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("amount=")),
+        "missing required request field amount"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -3946,7 +4409,7 @@ async fn user_request_withdrawal_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_request_withdrawal().await;
+    let result = client.user_request_withdrawal(&body).await;
     assert!(
         matches!(
             result,
@@ -3964,7 +4427,7 @@ async fn user_request_withdrawal_success_and_rejection() {
 #[tokio::test]
 async fn get_staked_amount_success_and_rejection() {
     let query = GetStakedAmountQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4004,7 +4467,7 @@ async fn get_staked_amount_success_and_rejection() {
 #[tokio::test]
 async fn get_staking_instruments_success_and_rejection() {
     let query = GetStakingInstrumentsQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4050,7 +4513,7 @@ async fn get_staking_instruments_success_and_rejection() {
 #[tokio::test]
 async fn get_trading_settings_success_and_rejection() {
     let query = GetTradingSettingsQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4095,7 +4558,7 @@ async fn get_trading_settings_success_and_rejection() {
 
 #[tokio::test]
 async fn get_trading_volume_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"{}"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4141,7 +4604,7 @@ async fn get_trading_volume_success_and_rejection() {
 #[tokio::test]
 async fn get_unstaking_requests_success_and_rejection() {
     let query = GetUnstakingRequestsQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4187,7 +4650,7 @@ async fn get_unstaking_requests_success_and_rejection() {
 #[tokio::test]
 async fn get_user_wallet_success_and_rejection() {
     let query = GetUserWalletQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4227,7 +4690,7 @@ async fn get_user_wallet_success_and_rejection() {
 #[tokio::test]
 async fn get_wallet_history_success_and_rejection() {
     let query = GetWalletHistoryQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4273,7 +4736,7 @@ async fn get_wallet_history_success_and_rejection() {
 #[tokio::test]
 async fn get_wallet_summary_success_and_rejection() {
     let query = GetWalletSummaryQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4339,7 +4802,34 @@ async fn wallet_transfer_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"amount\"")),
+        "missing required request field amount"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"currency\"")),
+        "missing required request field currency"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"fromAccountId\"")),
+        "missing required request field fromAccountId"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"targetAccountId\"")),
+        "missing required request field targetAccountId"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -4368,7 +4858,7 @@ async fn wallet_transfer_success_and_rejection() {
 #[tokio::test]
 async fn user_affiliates_get_success_and_rejection() {
     let query = UserAffiliatesGetQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4414,7 +4904,7 @@ async fn user_affiliates_get_success_and_rejection() {
 #[tokio::test]
 async fn user_event_get_success_and_rejection() {
     let query = UserEventGetQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"{"userEvents":[{"type":"apiKeyCreated","status":"success","userId":1,"createdById":1,"created":"fixture"}]}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4454,7 +4944,11 @@ async fn user_event_get_success_and_rejection() {
 #[tokio::test]
 async fn user_price_alert_get_alerts_success_and_rejection() {
     let query = UserPriceAlertGetAlertsQuery::default();
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(
+        200,
+        r#"[{"userId":1,"symbol":"fixture","alertType":"fixture"}]"#,
+    )
+    .await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4499,6 +4993,9 @@ async fn user_price_alert_get_alerts_success_and_rejection() {
 
 #[tokio::test]
 async fn user_price_alert_create_alert_success_and_rejection() {
+    let body: UserPriceAlertCreateAlertBody =
+        serde_json::from_str(r#"{"symbol":"fixture","alertType":"fixture"}"#)
+            .expect("body fixture");
     let (url, received) = support::serve(
         200,
         r#"{"userId":1,"symbol":"fixture","alertType":"fixture"}"#,
@@ -4509,7 +5006,7 @@ async fn user_price_alert_create_alert_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_price_alert_create_alert().await;
+    let result = client.user_price_alert_create_alert(&body).await;
     assert!(
         result.is_ok(),
         "success fixture for POST /api/v1/userPriceAlert: {result:?}"
@@ -4520,7 +5017,22 @@ async fn user_price_alert_create_alert_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("symbol=")),
+        "missing required request field symbol"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("alertType=")),
+        "missing required request field alertType"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -4531,7 +5043,7 @@ async fn user_price_alert_create_alert_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_price_alert_create_alert().await;
+    let result = client.user_price_alert_create_alert(&body).await;
     assert!(
         matches!(
             result,
@@ -4549,6 +5061,7 @@ async fn user_price_alert_create_alert_success_and_rejection() {
 #[tokio::test]
 async fn user_price_alert_update_alert_success_and_rejection() {
     let id = PathId::new("fixture").expect("path id");
+    let body: UserPriceAlertUpdateAlertBody = serde_json::from_str(r#"{}"#).expect("body fixture");
     let (url, received) = support::serve(
         200,
         r#"{"userId":1,"symbol":"fixture","alertType":"fixture"}"#,
@@ -4559,7 +5072,7 @@ async fn user_price_alert_update_alert_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_price_alert_update_alert(&id).await;
+    let result = client.user_price_alert_update_alert(&id, &body).await;
     assert!(
         result.is_ok(),
         "success fixture for PUT /api/v1/userPriceAlert/fixture: {result:?}"
@@ -4570,7 +5083,10 @@ async fn user_price_alert_update_alert_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/x-www-form-urlencoded"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -4581,7 +5097,7 @@ async fn user_price_alert_update_alert_success_and_rejection() {
         .loopback_rest_url(url)
         .build()
         .expect("client");
-    let result = client.user_price_alert_update_alert(&id).await;
+    let result = client.user_price_alert_update_alert(&id, &body).await;
     assert!(
         matches!(
             result,
@@ -4644,7 +5160,7 @@ async fn get_volume_rank_success_and_rejection() {
 
 #[tokio::test]
 async fn get_wallet_assets_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4689,7 +5205,7 @@ async fn get_wallet_assets_success_and_rejection() {
 
 #[tokio::test]
 async fn get_wallet_currencies_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"{"fixture":{}}"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4734,7 +5250,7 @@ async fn get_wallet_currencies_success_and_rejection() {
 
 #[tokio::test]
 async fn get_wallet_conversion_haircut_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4779,7 +5295,7 @@ async fn get_wallet_conversion_haircut_success_and_rejection() {
 
 #[tokio::test]
 async fn get_wallet_networks_success_and_rejection() {
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4826,7 +5342,7 @@ async fn get_wallet_networks_success_and_rejection() {
 async fn cancel_order_v2_success_and_rejection() {
     let body: CancelOrderV2Body =
         serde_json::from_str(r#"{"orderID":["fixture"]}"#).expect("body fixture");
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1,"cumQty":1,"leavesQty":1,"orderID":"fixture","orderQty":1,"side":"Buy","symbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4840,7 +5356,10 @@ async fn cancel_order_v2_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("DELETE /api/v2/order"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -4883,7 +5402,16 @@ async fn new_order_v2_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("POST /api/v2/order"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
+    assert!(
+        request
+            .split_once("\r\n\r\n")
+            .is_some_and(|(_, body)| body.contains("\"symbol\"")),
+        "missing required request field symbol"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -4924,7 +5452,10 @@ async fn amend_order_v2_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("PUT /api/v2/order"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -4950,7 +5481,7 @@ async fn amend_order_v2_success_and_rejection() {
 #[tokio::test]
 async fn cancel_all_order_v2_success_and_rejection() {
     let body: CancelAllOrderV2Body = serde_json::from_str(r#"{}"#).expect("body fixture");
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{"account":1,"cumQty":1,"leavesQty":1,"orderID":"fixture","orderQty":1,"side":"Buy","symbol":"fixture"}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -4964,7 +5495,10 @@ async fn cancel_all_order_v2_success_and_rejection() {
     let request = received.await.expect("request recorded");
     assert!(request.starts_with("DELETE /api/v2/order/all"), "{request}");
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,
@@ -4990,7 +5524,7 @@ async fn cancel_all_order_v2_success_and_rejection() {
 #[tokio::test]
 async fn cancel_all_after_order_v2_success_and_rejection() {
     let body: CancelAllAfterOrderV2Body = serde_json::from_str(r#"{}"#).expect("body fixture");
-    let (url, received) = support::serve(200, r#"[]"#).await;
+    let (url, received) = support::serve(200, r#"[{}]"#).await;
     let client = Client::builder(Environment::Testnet)
         .credentials(ApiCredentials::new("fixture-key", "fixture-secret").expect("credentials"))
         .loopback_rest_url(url)
@@ -5007,7 +5541,10 @@ async fn cancel_all_after_order_v2_success_and_rejection() {
         "{request}"
     );
     assert!(request.contains("api-signature:"), "{request}");
-
+    assert!(
+        request.contains("content-type: application/json"),
+        "missing request content type"
+    );
     let (url, received) = support::serve(
         400,
         r#"{"error":{"name":"ValidationError","message":"fixture"}}"#,

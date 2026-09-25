@@ -29,7 +29,7 @@ version is **1.95.0**.
 | Current REST documentation | 141 operations inventoried |
 | Callable typed REST methods | 114, each with local success and rejection fixtures |
 | Documentation blockers | 27 pages with no published response fields |
-| JSON WebSocket topics | 30 named topics on primary and platform sockets |
+| JSON WebSocket topics | All 30 acknowledged read-only Testnet subscriptions |
 | Order version | v2 preferred; v1 available for documented compatibility |
 | Testnet validation | Public instruments, authenticated API-key self and order query, and private order-feed subscription passed read-only |
 
@@ -101,7 +101,7 @@ Connect using `Client::connect_realtime(realtime::Service::Primary)`, send `subs
 
 - API signatures cover the exact method, encoded path and query, expiry, and serialized JSON bytes. Credentials are injected and redacted in `Debug`.
 - Financial JSON numbers and decimal strings are parsed as exact `rust_decimal::Decimal`; numeric JSON output uses the same exact decimal text.
-- REST bodies and WebSocket frames are bounded. Cloned clients share rate admission, cooldown, and mutation fences.
+- REST bodies and WebSocket frames default to a 64 MiB bound; callers can tune each bound. Cloned clients share rate admission, cooldown, and mutation fences.
 - Mutations are single-attempt. An uncertain outcome fences the affected account or credential scope until the caller reconciles BitMEX state and calls `acknowledge_reconciliation`.
 - Realtime connections never silently reconnect. A `Gap` means the caller must obtain a fresh image. The optional L2 book projection invalidates on a gap.
 
@@ -117,8 +117,12 @@ and L2 recovery. These tests establish the documented wire surface. Four read-on
 probes passed on 2026-09-25: public instruments, signed `GET /api/v1/apiKey/self`, bounded
 `GET /api/v1/order`, and an authenticated private `order` WebSocket subscription. A separate
 account-margin query returned HTTP 401 with the supplied test key, so account-data access remains
-unverified. The live REST
-response also exposed the API-key schema drift recorded in [coverage notes](docs/coverage.md).
+unverified. An additional read-only sweep attempted all 71 callable GET methods: 43 decoded
+successful responses and 28 received provider rejections with this key. The live REST responses
+exposed the schema differences recorded in [coverage notes](docs/coverage.md). All 13 form-only
+methods now have typed request bodies and exact-byte signing fixtures. Live mutation
+testing remains incomplete. All 30 documented JSON WebSocket topics also acknowledged Testnet
+subscriptions after correcting the platform socket host and canonical signing path.
 
 The optional read-only Testnet probes are ignored and must be explicitly armed. The authenticated
 probes require `BITMEX_TESTNET_API_KEY` and `BITMEX_TESTNET_API_SECRET` from the caller's secret

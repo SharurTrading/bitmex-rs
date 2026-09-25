@@ -282,6 +282,42 @@ mod topic_tests {
     use super::*;
 
     #[test]
+    fn every_pinned_feed_has_the_expected_service_and_auth_scope() {
+        let inventory: serde_json::Value =
+            serde_json::from_str(include_str!("../../spec/official/ws-topics.json"))
+                .expect("pinned WebSocket topics");
+        let names = |group: &str| {
+            inventory[group]
+                .as_array()
+                .expect("topic group")
+                .iter()
+                .map(|name| name.as_str().expect("topic name"))
+                .collect::<Vec<_>>()
+        };
+        let primary_public = names("primary_public");
+        let primary_private = names("primary_private");
+        let platform = names("platform");
+        assert_eq!(
+            ALL_FEEDS.len(),
+            primary_public.len() + primary_private.len() + platform.len()
+        );
+        for feed in ALL_FEEDS {
+            let name = feed.as_str();
+            let (service, private) = if primary_public.contains(&name) {
+                (Service::Primary, false)
+            } else if primary_private.contains(&name) {
+                (Service::Primary, true)
+            } else {
+                assert!(platform.contains(&name), "unlisted topic: {name}");
+                (Service::Platform, name == "privateNotifications")
+            };
+            assert_eq!(feed.service(), service, "{name}");
+            assert_eq!(feed.requires_auth(), private, "{name}");
+            assert!(Topic::new(feed, None, None).is_ok(), "{name}");
+        }
+    }
+
+    #[test]
     fn pool_subscription_uses_documented_third_token() {
         let symbol = Symbol::new("XBTUSD").expect("symbol");
         let topic =

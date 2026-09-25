@@ -12,6 +12,7 @@ old = json.loads((root / "spec/official/explorer-operations.json").read_text())
 ws = json.loads((root / "spec/official/ws-topics.json").read_text())
 api = (root / "src/generated/api.rs").read_text()
 tests = (root / "tests/generated_rest.rs").read_text()
+sweep = (root / "tests/testnet_sweep.rs").read_text()
 feed_source = (root / "src/realtime/types.rs").read_text()
 
 assert len(spec["operations"]) == 141, "current REST inventory changed; review source drift"
@@ -31,6 +32,20 @@ for operation in ledger["operations"]:
     assert re.search(rf"pub async fn {re.escape(name)}\b", api), f"missing public method: {key}"
     assert re.search(rf"async fn {re.escape(name)}_success_and_rejection\b", tests), f"missing local fixture: {key}"
     assert re.search(rf"client\s*\.\s*{re.escape(name)}\s*\(", tests), f"fixture does not use public method: {key}"
+    if operation["method"] == "GET":
+        assert re.search(rf"probe!\(\s*{re.escape(name)}\b", sweep), f"missing read-only Testnet probe: {key}"
+
+for source in spec["operations"]:
+    content = (source.get("request_body") or {}).get("content", {})
+    form = content.get("application/x-www-form-urlencoded", {}).get("schema", {})
+    if not form.get("properties") or "application/json" in content:
+        continue
+    operation = next(o for o in ledger["operations"] if (o["method"], o["path"]) == (source["method"], source["path"]))
+    if operation["status"] == "blocked":
+        continue
+    assert operation["request_type"], f"missing typed form body: {(source['method'], source['path'])}"
+    method = re.search(rf"pub async fn {re.escape(operation['public_method'])}\b[\s\S]*?\n    }}", api)
+    assert method and "self.execute_form(" in method.group(), f"form body not encoded: {(source['method'], source['path'])}"
 
 topics = ws["primary_public"] + ws["primary_private"] + ws["platform"]
 assert len(topics) == 30 and len(set(topics)) == 30
