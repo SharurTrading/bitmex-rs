@@ -8,9 +8,10 @@
 [![Testnet probes: 4/4 passed](https://img.shields.io/badge/Testnet%20probes-4%2F4%20passed-brightgreen.svg)](#testing-and-maintenance)
 
 > [!WARNING]
-> **Pre-release:** four read-only Testnet probes passed on 2026-09-25, alongside deterministic
-> local fixtures. No Mainnet account or live order has been tested. Validate the client and your
-> reconciliation flow independently before using it for live trading.
+> **Pre-release: live testing is not yet complete.** Four read-only Testnet probes passed on
+> 2026-09-25, alongside deterministic local fixtures. No Mainnet account or live order has been
+> tested. Validate the client and your reconciliation flow independently before using it for live
+> trading.
 
 An async, provider-native Rust client for the [BitMEX REST API](https://docs.bitmex.com/api-explorer)
 and [JSON WebSocket API](https://www.bitmex.com/app/wsAPI). The Cargo package is `bitmex-client`,
