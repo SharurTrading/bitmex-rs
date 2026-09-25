@@ -1,0 +1,40 @@
+{
+  "source": "https://www.bitmex.com/app/static/md/en-US/wsAPI",
+  "sha256": "95b1594c24636c79d17e22839372db1c33a4b93bcdc80633e6908166c0c1995a",
+  "primary_public": [
+    "funding",
+    "instrument",
+    "insurance",
+    "liquidation",
+    "orderBookL2_25",
+    "orderBookL2",
+    "orderBook10",
+    "quote",
+    "quoteBin1m",
+    "quoteBin5m",
+    "quoteBin1h",
+    "quoteBin1d",
+    "settlement",
+    "trade",
+    "tradeBin1m",
+    "tradeBin5m",
+    "tradeBin1h",
+    "tradeBin1d"
+  ],
+  "primary_private": [
+    "affiliate",
+    "execution",
+    "order",
+    "margin",
+    "position",
+    "transact",
+    "wallet"
+  ],
+  "platform": [
+    "announcement",
+    "chat",
+    "connected",
+    "publicNotifications",
+    "privateNotifications"
+  ]
+}
