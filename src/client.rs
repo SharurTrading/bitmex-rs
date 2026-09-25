@@ -2,7 +2,7 @@
 
 use crate::{Error, OperationError, ProviderRejection};
 use futures_util::StreamExt;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use reqwest::{Method, StatusCode, Url};
 use serde::{Serialize, de::DeserializeOwned};
 use sha2::Sha256;

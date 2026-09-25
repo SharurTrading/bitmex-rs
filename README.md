@@ -110,7 +110,8 @@ See [SECURITY.md](SECURITY.md) before using credentials or trading methods. No c
 ## Testing and maintenance
 
 Normal CI is credential-free. It runs formatting, strict Clippy, all-feature tests, rustdoc,
-offline generation and coverage checks, and `cargo package --locked` on Rust 1.95. Each of the
+offline generation and coverage checks, `cargo package --locked` on Rust 1.95, and full-history
+secret scanning with a checksum-verified Gitleaks binary. Each of the
 114 callable REST methods has deterministic loopback success and rejection fixtures. Unit tests
 cover signing, exact decimals, shared mutation fences and rate admission, WebSocket lifecycle,
 and L2 recovery. These tests establish the documented wire surface. Four read-only Testnet
