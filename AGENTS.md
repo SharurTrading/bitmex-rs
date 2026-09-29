@@ -8,6 +8,24 @@ This repository contains the standalone `bitmex-client` library. Stable rule IDs
 - **BM-CONTRACT-01:** The pinned current BitMEX endpoint pages and JSON WebSocket documentation are authoritative. The older API Explorer Swagger is a cross-check; record drift explicitly.
 - **BM-COVERAGE-01:** Every inventoried operation and topic has a public typed contract and deterministic fixture, or an explicit documentation blocker. Coverage claims are computed from the ledger. An empty provider response schema is not a typed success contract.
 - **BM-DECIMAL-01:** Prices, balances, fees, rates, margins, and P&L use exact `rust_decimal::Decimal` parsing and numeric serialization without a floating-point round trip.
+- **LAW-INVARIANT:** A supposedly impossible branch is not permission to
+  invent a business value or silently abandon work. Exhaustive matches, failed
+  conversions and missing required state must not fabricate a side, price,
+  quantity, identity, account mode or success merely to satisfy the type
+  checker or avoid a panic. Prefer a type or function boundary that makes the
+  invalid combination unrepresentable; where it remains representable, report
+  a typed invariant failure to the owning caller. A bare `return`, `continue`,
+  `None`, `Ok(())`, log-only path or `Default` is not a fix when it disguises
+  that failure as absence, success or a benign no-op. Legitimate optional
+  values, declared defaults and duplicate/stale outcomes remain valid only
+  when they express the operation's actual contract. An "unreachable by
+  construction" comment or `debug_assert!` alone does not establish a
+  release-build outcome. Review verifies the caller handles the failure
+  explicitly, preserves accepted evidence and avoids partial business-state
+  mutation. Test a representable failure at its owning boundary and assert its
+  observable outcome and state preservation, not merely that it does not
+  panic. Existing violations found outside the current change receive a
+  tracked issue with the path and required outcome.
 - **BM-ID-01:** Public provider identities are distinct validated types. Money-moving requests name their account and instrument explicitly where the provider permits.
 
 ## Transport and safety
