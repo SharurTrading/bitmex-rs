@@ -91,3 +91,6 @@ This repository contains the standalone `bitmex-client` library. Stable rule IDs
   or description length. A plan's steps are the implementer's checklist, not PR boundaries. A plan
   whose groups only make sense together lands as ONE PR when the operator rules so; the split
   criteria above govern everything else.
+
+- **PROC_REVIEW_AGENTS** — If you are reviewing an open github PR, leave inline and outside diff comments (and a summary if needed), the type of comment should depend on if it is possible or suitable to do inline. On each comment attribute your model name in line with PROC-ATTRIB.
+- **PROC-POST_REVIEW** Assess all inline and outside diff comments + summaries. You have final say on what is valid but all comments must be resolved before we can merge due to rulesets.
